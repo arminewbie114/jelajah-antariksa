@@ -925,15 +925,19 @@ function animate(){
     }
     }
 
-    // deteksi planet terdekat
-    let best=null,bd=1e9,bdist=0;
-    for(const b of bodies){ const dist=shipGroup.position.distanceTo(b.mesh.position), d=dist-(b.data.renderRadius||0);
-      if(d<bd){bd=d;best=b;bdist=dist;} }
+    // deteksi objek terdekat. Skor = jarak / nearRadius (bukan jarak mentah),
+    // supaya galaksi jauh tidak kalah oleh planet yang kebetulan searah.
+    let best=null,bestScore=1;
+    const consider=(b,dist)=>{
+      if(!b||!b.data)return;
+      const nr=b.data.nearRadius||((b.data.renderRadius||0)*4+6);
+      const score=dist/nr;
+      if(score<bestScore){bestScore=score;best=b;}
+    };
+    for(const b of bodies)consider(b,shipGroup.position.distanceTo(b.mesh.position));
     // bulan juga bisa diinfo
-    const dMoon=shipGroup.position.distanceTo(moonMesh.position);
-    if(dMoon<bd){bd=dMoon;best={data:BONUS[0],mesh:moonMesh};bdist=dMoon;}
-    const nearLimit=best?(best.data.nearRadius||best.data.renderRadius*4+6):0;
-    S.nearBody=(best&&bdist<nearLimit)?best:null;
+    consider({data:BONUS[0],mesh:moonMesh},shipGroup.position.distanceTo(moonMesh.position));
+    S.nearBody=best;
     if(S.nearBody && !S.target){
       $('prompt-info').style.display='block';
       $('prompt-info').innerHTML=`Dekat <b>${S.nearBody.data.name}</b> — tekan <b>E</b> untuk info`;
