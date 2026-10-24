@@ -486,7 +486,157 @@ function buildAurora(){
   addEngines(g,'#7dffb2',[-0.75,0.75],-4.0,0.3,2.0);
   return g;
 }
-const builders={ 'nsx-vanguard':buildVanguard, 'nsx-odyssey':buildOdyssey, 'nsx-aurora':buildAurora };
+/* NSX Garuda — Airbus A330-300 bergaya Garuda Indonesia */
+let _garudaWinTex=null, _garudaBirdTex=null, _garudaCockpitTex=null;
+function garudaWindowTexture(){
+  if(_garudaWinTex)return _garudaWinTex;
+  const c=document.createElement('canvas'); c.width=1024; c.height=64;
+  const g=c.getContext('2d'); g.clearRect(0,0,1024,64);
+  for(let i=0;i<27;i++){
+    const x=24+i*36;
+    g.fillStyle='#091a2c'; g.fillRect(x,19,18,10);
+    g.fillStyle='rgba(125,210,255,.45)'; g.fillRect(x+2,21,4,6);
+  }
+  g.strokeStyle='rgba(11,78,162,.45)'; g.lineWidth=2;
+  [70,500,850].forEach(x=>g.strokeRect(x,8,44,48));
+  g.fillStyle='#0b4ea2'; g.fillRect(0,55,1024,4);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4;
+  _garudaWinTex=t; return t;
+}
+function garudaBirdTexture(){
+  if(_garudaBirdTex)return _garudaBirdTex;
+  const c=document.createElement('canvas'); c.width=512; c.height=512;
+  const g=c.getContext('2d'); g.clearRect(0,0,512,512);
+  g.save(); g.translate(256,258);
+  g.fillStyle='#f5fbff';
+  g.beginPath();
+  g.moveTo(0,-152);
+  g.bezierCurveTo(-36,-116,-76,-102,-122,-120);
+  g.bezierCurveTo(-190,-74,-232,4,-244,78);
+  g.bezierCurveTo(-176,46,-104,14,-44,42);
+  g.lineTo(0,148);
+  g.lineTo(44,42);
+  g.bezierCurveTo(104,14,176,46,244,78);
+  g.bezierCurveTo(232,4,190,-74,122,-120);
+  g.bezierCurveTo(76,-102,36,-116,0,-152);
+  g.closePath(); g.fill();
+  g.strokeStyle='#0b4ea2'; g.lineWidth=9; g.lineCap='round';
+  g.beginPath(); g.moveTo(-58,-94); g.lineTo(-118,-48); g.lineTo(-188,30); g.stroke();
+  g.beginPath(); g.moveTo(58,-94); g.lineTo(118,-48); g.lineTo(188,30); g.stroke();
+  g.beginPath(); g.moveTo(-42,26); g.lineTo(-70,72); g.stroke();
+  g.beginPath(); g.moveTo(42,26); g.lineTo(70,72); g.stroke();
+  g.fillStyle='#e7f6ff';
+  g.beginPath(); g.moveTo(-34,102); g.lineTo(-62,178); g.lineTo(0,146); g.lineTo(62,178); g.lineTo(34,102); g.closePath(); g.fill();
+  g.fillStyle='#f5fbff';
+  g.beginPath(); g.ellipse(0,-154,21,28,0,0,Math.PI*2); g.fill();
+  g.fillStyle='#c9a227';
+  g.beginPath(); g.moveTo(0,-187); g.lineTo(18,-157); g.lineTo(0,-148); g.lineTo(-18,-157); g.closePath(); g.fill();
+  g.fillStyle='#0b4ea2'; g.beginPath(); g.arc(-7,-160,3.2,0,Math.PI*2); g.fill();
+  g.restore();
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4;
+  _garudaBirdTex=t; return t;
+}
+function garudaCockpitTexture(){
+  if(_garudaCockpitTex)return _garudaCockpitTex;
+  const c=document.createElement('canvas'); c.width=512; c.height=192;
+  const g=c.getContext('2d');
+  const grad=g.createLinearGradient(0,0,0,192);
+  grad.addColorStop(0,'#0e2c4a'); grad.addColorStop(.55,'#07182b'); grad.addColorStop(1,'#040d18');
+  g.fillStyle=grad; g.fillRect(0,0,512,192);
+  g.strokeStyle='rgba(150,200,240,.55)'; g.lineWidth=5;
+  g.strokeRect(6,6,500,180);
+  [128,256,384].forEach(x=>{ g.beginPath(); g.moveTo(x,8); g.lineTo(x,184); g.stroke(); });
+  g.fillStyle='rgba(180,225,255,.12)';
+  [24,152,280,408].forEach(x=>{ g.beginPath(); g.moveTo(x,22); g.lineTo(x+58,22); g.lineTo(x+26,104); g.lineTo(x-8,104); g.closePath(); g.fill(); });
+  g.strokeStyle='rgba(5,15,28,.85)'; g.lineWidth=8;
+  [64,192,320,448].forEach(x=>{ g.beginPath(); g.moveTo(x,8); g.lineTo(x,184); g.stroke(); });
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4;
+  _garudaCockpitTex=t; return t;
+}
+let _garudaTitleTex=null;
+function garudaTitleTexture(){
+  if(_garudaTitleTex)return _garudaTitleTex;
+  const c=document.createElement('canvas'); c.width=1024; c.height=192;
+  const g=c.getContext('2d'); g.clearRect(0,0,1024,192);
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle='#0b4ea2';
+  g.font='900 126px Arial, sans-serif';
+  g.fillText('GARUDA',512,78);
+  g.fillStyle='#c9a227'; g.fillRect(294,132,436,9);
+  g.fillStyle='#0b4ea2'; g.font='700 34px Arial, sans-serif';
+  g.fillText('INDONESIA',512,164);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4;
+  _garudaTitleTex=t; return t;
+}
+function addSideDecal(g,tex,w,h,x,y,z,sign){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),
+    new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
+  m.position.set(x,y,z); m.up.set(0,0,1); m.lookAt(x+sign*10,y,z); g.add(m); return m;
+}
+function buildGaruda(){
+  const g=new THREE.Group();
+  const blue=new THREE.MeshStandardMaterial({color:0x0b4ea2,roughness:0.4,metalness:0.3,side:THREE.DoubleSide});
+  const gold=new THREE.MeshStandardMaterial({color:0xc9a227,roughness:0.32,metalness:0.85,emissive:0x2a1c00,emissiveIntensity:0.35});
+  const white=whiteM(0xf6f9fe);
+  g.userData.lights={navX:5.12,navY:-1.5,navZ:0.2,strobeY:-5.15,engineY:-1.0};
+
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.82,0.82,8.2,32),white));
+  const nose=new THREE.Mesh(new THREE.SphereGeometry(0.82,32,20,0,Math.PI*2,0,Math.PI/2),white); nose.position.y=4.1; g.add(nose);
+  const tailCone=new THREE.Mesh(new THREE.CylinderGeometry(0.82,0.14,1.7,32),white); tailCone.position.y=-4.95; g.add(tailCone);
+
+  const belly=new THREE.Mesh(new THREE.CylinderGeometry(0.828,0.828,7.4,32,1,true,Math.PI/2,Math.PI),blue); g.add(belly);
+  [-1,1].forEach(s=>{
+    const line=new THREE.Mesh(new THREE.BoxGeometry(0.02,7.1,0.035),gold);
+    line.position.set(s*0.79,0,-0.305); g.add(line);
+    const cheat=new THREE.Mesh(new THREE.BoxGeometry(0.02,7.2,0.16),blue);
+    cheat.position.set(s*0.81,0,-0.15); g.add(cheat);
+  });
+
+  const cockpit=new THREE.Mesh(
+    new THREE.SphereGeometry(0.828,32,12,Math.PI/2-0.72,1.44,0.90,0.42),
+    new THREE.MeshStandardMaterial({map:garudaCockpitTexture(),roughness:0.12,metalness:0.65,emissive:0x0a2740,emissiveIntensity:0.45,side:THREE.DoubleSide}));
+  cockpit.position.y=4.1; g.add(cockpit);
+
+  const winTex=garudaWindowTexture(), titleTex=garudaTitleTexture();
+  [-1,1].forEach(s=>{
+    addSideDecal(g,winTex,5.2,0.22,s*0.815,-0.95,0.18,s);
+    addSideDecal(g,titleTex,2.0,0.375,s*0.83,2.65,0.12,s);
+  });
+
+  const wingPts=[[0.5,1.8],[5.15,-0.4],[5.2,-1.3],[0.55,-2.1]];
+  const stabPts=[[0.3,-3.95],[2.35,-4.65],[2.3,-5.1],[0.35,-5.25]];
+  [-1,1].forEach(s=>{
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.16,0.05,whiteM(0xf7fafe));
+    w.position.z=-0.08; w.rotation.y=-s*0.065; g.add(w);
+    const winglet=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.52,0.72),blue);
+    winglet.position.set(s*5.12,-1.92,0.38); winglet.rotation.y=-s*0.18; g.add(winglet);
+    const st=extrudePlanform(s>0?stabPts:mirrorPts(stabPts),0.08,0.025,whiteM(0xf7fafe));
+    st.position.z=0.14; g.add(st);
+
+    const x=s*2.55;
+    const pylon=new THREE.Mesh(new THREE.BoxGeometry(0.24,1.2,0.5),whiteM(0xe9eff8));
+    pylon.position.set(x,0.12,-0.3); g.add(pylon);
+    const nacelle=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.38,1.7,20),whiteM(0xf1f5fb));
+    nacelle.position.set(x,0.08,-0.58); g.add(nacelle);
+    const intake=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.045,10,24),blue);
+    intake.rotation.x=Math.PI/2; intake.position.set(x,0.94,-0.58); g.add(intake);
+    const fan=new THREE.Mesh(new THREE.CircleGeometry(0.30,24),new THREE.MeshBasicMaterial({color:0x08131f}));
+    fan.rotation.x=-Math.PI/2; fan.position.set(x,0.935,-0.58); g.add(fan);
+    const spinner=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.18,12),gold);
+    spinner.position.set(x,1.02,-0.58); g.add(spinner);
+    const exhaust=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.29,0.42,16),
+      new THREE.MeshStandardMaterial({color:0x39424f,roughness:0.6,metalness:0.8}));
+    exhaust.position.set(x,-0.79,-0.58); g.add(exhaust);
+  });
+  addEngines(g,'#66d9ff',[-2.55,2.55],-1.0,0.24,1.4);
+
+  const fin=extrudePlanform([[0,-3.9],[0,-5.3],[0.55,-5.45],[2.0,-5.0],[2.05,-4.0],[1.4,-3.85]],0.12,0.03,blue);
+  fin.rotation.y=-Math.PI/2; fin.position.z=0.55; g.add(fin);
+  const bird=garudaBirdTexture();
+  [-1,1].forEach(s=>addSideDecal(g,bird,0.82,1.05,s*0.101,-4.48,1.55,s));
+  return g;
+}
+const builders={ 'nsx-vanguard':buildVanguard, 'nsx-odyssey':buildOdyssey, 'nsx-aurora':buildAurora, 'nsx-garuda':buildGaruda };
 
 /* Lampu navigasi + cahaya mesin agar pesawat jelas terlihat dalam gelap */
 function addRocketLights(){
@@ -538,6 +688,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Digit1') setRocket('nsx-vanguard');
   if(e.code==='Digit2') setRocket('nsx-odyssey');
   if(e.code==='Digit3') setRocket('nsx-aurora');
+  if(e.code==='Digit4') setRocket('nsx-garuda');
   if(e.code==='KeyF') S.firing=true;
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
 });

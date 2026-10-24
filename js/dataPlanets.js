@@ -38,6 +38,7 @@ export const ROCKETS = [
  { id:"nsx-vanguard", name:"NSX Vanguard", asal:"Armada Nusantara · Kelas Interseptor", tinggiM:"3.474 km · sebesar Bulan", stage:1, thrust:"Ion-X + Warp Ring", desc:"Interseptor sayap delta: badan lifting-body siluman, kanopi kaca kuantum, twin nacelle ion bercahaya.", warna:"#38e1ff" },
  { id:"nsx-odyssey", name:"NSX Odyssey", asal:"Armada Nusantara · Kelas Penjelajah", tinggiM:"3.800 km · sedikit lebih besar dari Bulan", stage:1, thrust:"Antimateri + Warp Ring Ganda", desc:"Penjelajah sayap lebar berbadan katamaran, dek observasi kaca, dan cincin warp ganda untuk lintas bintang.", warna:"#a78bfa" },
  { id:"nsx-aurora", name:"NSX Aurora", asal:"Armada Nusantara · Kelas Pengintai", tinggiM:"3.100 km · sedikit lebih kecil dari Bulan", stage:1, thrust:"Fusi He-3 + Layar Surya", desc:"Pengintai sayap maju dengan panel surya emas, sensor fotonik, dan manuver tinggi.", warna:"#f5c542" },
+ { id:"nsx-garuda", name:"NSX Garuda", asal:"Armada Nusantara · Airbus A330-300 Garuda Indonesia", tinggiM:"63,7 m asli · dirender seukuran NSX", stage:1, thrust:"Turbofan Ion Hibrida + Warp Ring", desc:"Widebody Airbus A330-300 bercorak Garuda Indonesia: lambung putih, perut biru, ekor burung Garuda, dua turbofan besar, dan sayap lebar untuk jelajah antariksa.", warna:"#0b4ea2" },
 ];
 
 /* Eksoplanet nyata (data NASA Exoplanet Archive) + Lubang Hitam.

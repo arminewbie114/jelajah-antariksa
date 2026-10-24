@@ -1,6 +1,6 @@
 # 🚀 Nusantara Space Explorer
 
-Web penjelajah antariksa 3D FPS berbahasa Indonesia. Terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora) ke **8 planet + Bulan + Pluto + 3 eksoplanet nyata**, lalu jelajahi **Bima Sakti** (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan **5 galaksi lain** (Andromeda, Triangulum, LMC, Whirlpool, Sombrero).
+Web penjelajah antariksa 3D FPS berbahasa Indonesia. Terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora, Garuda A330) ke **8 planet + Bulan + Pluto + 3 eksoplanet nyata**, lalu jelajahi **Bima Sakti** (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan **5 galaksi lain** (Andromeda, Triangulum, LMC, Whirlpool, Sombrero).
 
 ## Cara menjalankan
 
@@ -15,7 +15,7 @@ python -m http.server 8080
 Atau pakai ekstensi *Live Server* di VS Code.
 
 ## Kontrol
-- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly (default Free-Fly FPS), E info (toggle), M peta + autopilot, R isi bensin, 1/2/3 ganti pesawat.
+- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly (default Free-Fly FPS), E info (toggle), M peta + autopilot, R isi bensin, 1/2/3/4 ganti pesawat.
 - **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan), tombol **⚡** = tembak laser (tahan untuk tembak otomatis).
 - **Autopilot:** pilih tujuan di peta (M). Kapal otomatis mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk membuka info; gerakkan mouse/WASD untuk batal.
 
