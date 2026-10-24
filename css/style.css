@@ -1,0 +1,68 @@
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#04060f;--panel:rgba(10,16,32,.92);--accent:#38e1ff;--accent2:#a78bfa;--txt:#e8f1ff}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,Roboto,Arial,sans-serif}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,10,.55) 100%)}
+#warp-lines{position:fixed;inset:0;pointer-events:none;opacity:0;background:repeating-linear-gradient(90deg,transparent 0 46px,rgba(120,220,255,.25) 46px 48px);transition:opacity .3s}
+#warp-lines.on{opacity:1;animation:warp .4s linear infinite}
+@keyframes warp{to{transform:scaleX(1.4)}}
+#hud-top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:linear-gradient(180deg,rgba(0,0,10,.75),transparent);z-index:20;font-size:14px;flex-wrap:wrap}
+.hud-brand b{color:var(--accent)}
+.hud-stats{display:flex;gap:12px;background:rgba(0,10,25,.55);padding:6px 12px;border-radius:20px;border:1px solid rgba(56,225,255,.25)}
+.hud-btns{display:flex;gap:6px}
+.hud-btns button,.warp-btn,#btn-boost,#btn-warpdrive,#pp-warp,#pp-refuel,#btn-stop-nav,#btn-launch,#help-close,#mode-select button{background:#0c1830;color:var(--txt);border:1px solid rgba(56,225,255,.4);border-radius:10px;padding:7px 11px;cursor:pointer;font-size:14px}
+.hud-btns button:hover,.warp-btn:hover,#btn-boost:hover,#btn-warpdrive:hover{border-color:var(--accent);box-shadow:0 0 12px rgba(56,225,255,.4)}
+.warp-btn.active,#mode-select button.active{background:var(--accent);color:#00131c;font-weight:700}
+#hud-bottom{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:linear-gradient(0deg,rgba(0,0,10,.8),transparent);z-index:20;font-size:13px;flex-wrap:wrap}
+#fuel-wrap{min-width:200px;flex:1;max-width:300px}
+#fuel-bar{height:10px;background:#122;border-radius:6px;overflow:hidden;border:1px solid rgba(56,225,255,.3)}
+#fuel-fill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#38e1ff);transition:width .2s}
+#warp-wrap{display:flex;gap:6px;align-items:center}
+#btn-warpdrive.on,#btn-boost.on{background:var(--accent2);color:#0b0618;font-weight:700}
+#ctrl-hint{opacity:.7}
+#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:rgba(255,255,255,.8);z-index:15;pointer-events:none;text-shadow:0 0 6px #000}
+#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);padding:8px 16px;border-radius:12px;z-index:40;display:none}
+#prompt-info{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:rgba(20,40,80,.9);padding:8px 16px;border-radius:12px;border:1px solid var(--accent);z-index:25;display:none}
+#cockpit-frame{position:fixed;inset:0;pointer-events:none;z-index:10;background:
+ radial-gradient(ellipse at 50% 120%,transparent 45%,rgba(8,12,24,.95) 46% 100%),
+ linear-gradient(90deg,rgba(8,12,24,.95) 0 7%,transparent 7.5% 92.5%,rgba(8,12,24,.95) 93% 100%),
+ linear-gradient(180deg,rgba(8,12,24,.9) 0 6%,transparent 6.5%)}
+#cockpit-dash{position:fixed;bottom:52px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:16}
+.mfd{background:rgba(2,12,22,.85);border:1px solid var(--accent);border-radius:10px;padding:6px 14px;min-width:110px;text-align:center;box-shadow:0 0 14px rgba(56,225,255,.25) inset}
+.mfd small{display:block;opacity:.6;font-size:10px;letter-spacing:1px}
+.mfd span{font-family:monospace;font-size:15px;color:#7df9ff}
+.hidden{display:none!important}
+#planet-panel,#map-panel{position:fixed;right:12px;top:60px;width:330px;max-width:92vw;max-height:82vh;overflow:auto;background:var(--panel);border:1px solid rgba(56,225,255,.4);border-radius:16px;padding:16px;z-index:50;backdrop-filter:blur(8px)}
+#planet-panel h2,#map-panel h2{color:var(--accent)}
+#pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0;font-size:13px}
+#pp-grid div{background:rgba(255,255,255,.06);padding:6px 8px;border-radius:8px}
+#pp-desc{font-size:14px;opacity:.9;margin:6px 0}
+#pp-facts{margin:8px 0 8px 18px;font-size:13px}
+.pp-actions{display:flex;gap:8px;margin:8px 0}
+#planet-list{display:grid;gap:6px;margin:8px 0}
+#planet-list button{text-align:left;background:#0c1830;color:var(--txt);border:1px solid rgba(167,139,250,.4);border-radius:10px;padding:8px;cursor:pointer}
+#planet-list button.visited{border-color:#22c55e}
+#planet-list button.target{border-color:var(--accent);background:#123}
+#minimap{background:#02040c;border:1px solid rgba(56,225,255,.3);border-radius:12px;width:100%}
+#splash,#help-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,12,.72);z-index:100;padding:16px;overflow:auto}
+.splash-card{background:linear-gradient(180deg,#0a1330,#060a1c);border:1px solid rgba(56,225,255,.45);border-radius:20px;padding:26px;max-width:620px;width:100%;box-shadow:0 0 60px rgba(56,225,255,.15)}
+.splash-card h1{color:var(--accent);margin-bottom:8px}
+.splash-card p{margin:8px 0;font-size:15px}
+.splash-card label{display:block;margin:12px 0 6px;font-weight:700}
+.small{font-size:12px;opacity:.7}
+#rocket-select,#mode-select{display:flex;gap:8px;flex-wrap:wrap}
+#rocket-select button{flex:1;min-width:150px;background:#0c1830;color:var(--txt);border:1px solid rgba(56,225,255,.35);border-radius:12px;padding:10px;cursor:pointer}
+#rocket-select button.active{border-color:var(--accent);background:#12314f}
+#rocket-spec{font-size:13px;background:rgba(255,255,255,.05);border-radius:10px;padding:8px;margin-top:8px;font-family:monospace}
+#btn-launch{width:100%;margin-top:14px;font-size:18px;font-weight:800;background:linear-gradient(90deg,#0891b2,#7c3aed);border:none;padding:14px;border-radius:14px}
+#btn-launch:hover{filter:brightness(1.2)}
+#mobile-controls{display:none}
+@media (pointer:coarse){
+ #mobile-controls{display:block}
+ #ctrl-hint{display:none}
+ #joy-left{position:fixed;left:16px;bottom:90px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(56,225,255,.4);z-index:30}
+ #joy-knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(56,225,255,.5)}
+ #mobile-btns{position:fixed;right:12px;bottom:90px;display:grid;gap:8px;z-index:30}
+ #mobile-btns button{width:56px;height:56px;border-radius:50%;font-size:20px;background:rgba(12,24,48,.85);color:#fff;border:1px solid var(--accent)}
+ #cockpit-dash{bottom:220px}
+}

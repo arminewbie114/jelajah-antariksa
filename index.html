@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Nusantara Space Explorer — Penjelajah Antariksa 3D FPS</title>
+<meta name="description" content="Web penjelajah antariksa 3D FPS: terbangkan pesawat futuristik NSX ke 8 planet, 3 eksoplanet, dan lubang hitam Cygnus X-1 dengan data akurat NASA. Bahasa Indonesia." />
+<link rel="stylesheet" href="css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="vignette"></div>
+<div id="warp-lines"></div>
+
+<!-- HUD atas -->
+<header id="hud-top">
+  <div class="hud-brand">🚀 <b>Nusantara</b> Space Explorer</div>
+  <div class="hud-stats">
+    <span id="hud-speed">0 km/dtk</span>
+    <span id="hud-target">🎯 —</span>
+    <span id="hud-visited">🪐 0/8</span>
+    <span id="hud-fps">60 FPS</span>
+  </div>
+  <div class="hud-btns">
+    <button id="btn-map" title="Peta (M)">🗺️</button>
+    <button id="btn-cockpit" title="Toggle Kokpit (C)">🪟</button>
+    <button id="btn-sound" title="Suara">🔊</button>
+    <button id="btn-help" title="Bantuan (H)">❓</button>
+    <button id="btn-pause" title="Jeda (Esc)">⏸️</button>
+  </div>
+</header>
+
+<!-- HUD bawah : bahan bakar + warp -->
+<footer id="hud-bottom">
+  <div id="fuel-wrap"><label>Bahan Bakar <span id="fuel-pct">100%</span></label><div id="fuel-bar"><div id="fuel-fill"></div></div></div>
+  <div id="warp-wrap">
+    <button data-warp="1" class="warp-btn active">1×</button>
+    <button data-warp="10" class="warp-btn">10×</button>
+    <button data-warp="100" class="warp-btn">100×</button>
+    <button id="btn-boost" title="Boost (Shift)">⚡ BOOST</button>
+    <button id="btn-warpdrive" title="Warp Drive (J)">🌌 WARP</button>
+  </div>
+  <div id="ctrl-hint">WASD gerak · Mouse lihat · <b>C</b> kokpit · <b>E</b> info · <b>M</b> peta · <b>R</b> isi bensin</div>
+</footer>
+
+<!-- Crosshair FPS -->
+<div id="crosshair">+</div>
+<div id="toast"></div>
+<div id="prompt-info">Tekan <b>E</b> untuk info planet</div>
+
+<!-- Kokpit overlay -->
+<div id="cockpit" class="hidden">
+  <div id="cockpit-frame"></div>
+  <div id="cockpit-dash">
+    <div class="mfd"><small>NAV</small><span id="mfd-nav">—</span></div>
+    <div class="mfd"><small>KECEPATAN</small><span id="mfd-speed">0</span></div>
+    <div class="mfd"><small>BBM</small><span id="mfd-fuel">100%</span></div>
+  </div>
+</div>
+
+<!-- Panel info planet -->
+<aside id="planet-panel" class="hidden">
+  <button id="panel-close">✕</button>
+  <h2 id="pp-name">Bumi</h2>
+  <p id="pp-type"></p>
+  <div id="pp-grid"></div>
+  <p id="pp-desc"></p>
+  <ul id="pp-facts"></ul>
+  <div class="pp-actions">
+    <button id="pp-warp">🌌 Warp ke sini</button>
+    <button id="pp-refuel">⛽ Isi BBM</button>
+  </div>
+  <small>Sumber: NASA Planetary Fact Sheet · Skala jarak dikompresi agar playable</small>
+</aside>
+
+<!-- Peta + autopilot -->
+<aside id="map-panel" class="hidden">
+  <button id="map-close">✕</button>
+  <h2>🗺️ Peta Tata Surya</h2>
+  <canvas id="minimap" width="260" height="260"></canvas>
+  <h3>Autopilot — Terbang ke:</h3>
+  <div id="planet-list"></div>
+  <button id="btn-stop-nav">🛑 Batalkan navigasi</button>
+</aside>
+
+<!-- Kontrol mobile -->
+<div id="mobile-controls">
+  <div id="joy-left"><div id="joy-knob"></div></div>
+  <div id="mobile-btns">
+    <button id="m-thrust">▲</button>
+    <button id="m-warp">🌌</button>
+    <button id="m-info">ℹ️</button>
+    <button id="m-cockpit">🪟</button>
+  </div>
+</div>
+
+<!-- Layar pembuka -->
+<div id="splash">
+  <div class="splash-card">
+    <h1>🚀 Nusantara Space Explorer</h1>
+    <p>Jelajahi <b>8 planet + Pluto, Bulan, 3 eksoplanet & lubang hitam Cygnus X-1</b> dengan <b>pesawat futuristik</b> dalam <b>3D First-Person</b>. Kecepatan maks <b>4000 km/dtk</b>. Data mengacu <b>NASA</b>.</p>
+    <label>Pilih Pesawatmu:</label>
+    <div id="rocket-select"></div>
+    <div id="rocket-spec"></div>
+    <label>Mode Kamera:</label>
+    <div id="mode-select">
+      <button data-mode="cockpit" class="active">🪟 Kokpit Imersif</button>
+      <button data-mode="freefly">🎥 Free-Fly FPS</button>
+    </div>
+    <button id="btn-launch">🛫 LEPAS LANDAS</button>
+    <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse) · HP: joystick kiri + geser kanan.<br/>Klik planet / dekati planet untuk panel info Indonesia.</p>
+  </div>
+</div>
+
+<div id="help-modal" class="hidden">
+  <div class="splash-card">
+    <h2>❓ Cara Bermain</h2>
+    <ul>
+      <li><b>WASD</b> maju/mundur/strafe, <b>Spasi/Ctrl</b> naik/turun, <b>Shift</b> boost, <b>J</b> warp drive.</li>
+      <li><b>Mouse</b>: klik canvas untuk Pointer Lock, gerakkan untuk melihat.</li>
+      <li><b>C</b>: ganti kokpit / free-fly · <b>E</b>: info planet terdekat · <b>M</b>: peta & autopilot · <b>R</b>: isi BBM · <b>1/2/3</b>: ganti pesawat.</li>
+      <li>Kecepatan dibatasi <b>4000 km/dtk</b> (warp penuh). Jelajah hingga orbit 430 untuk <b>lubang hitam Cygnus X-1</b> — awas gravitasinya menyedot pesawat!</li>
+      <li>Dekati planet sampai muncul prompt, checklist 8/8 untuk menamatkan misi.</li>
+      <li>Skala: diameter proporsional akurat, jarak dikompresi 1:4000 + warp agar playable. Bukan 1:1 mentah.</li>
+    </ul>
+    <button id="help-close">Tutup</button>
+  </div>
+</div>
+
+<script type="module" src="js/dataPlanets.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
