@@ -97,6 +97,20 @@ glow.scale.set(70,70,1); scene.add(glow);
 const bodies = []; // {data, mesh, angle, speed, moons[]}
 const BASE_ORBIT_SECONDS = 140; // 1 tahun Bumi = 140 dtk pada 1x
 function orbitSpeed(hari){ return (Math.PI*2) / (hari/365*BASE_ORBIT_SECONDS); }
+function hash32(text){
+  let h=2166136261;
+  for(let i=0;i<text.length;i++){ h^=text.charCodeAt(i); h=Math.imul(h,16777619); }
+  return h>>>0;
+}
+function angleFromId(id){ return hash32(String(id||'body'))/4294967296*Math.PI*2; }
+function makeRng(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
 
 function addLabelSprite(text, w=256, h=64){
   const c=document.createElement('canvas'); c.width=w; c.height=h;
@@ -118,7 +132,7 @@ for(const p of PLANETS){
   // orbit line
   const pts=[]; for(let i=0;i<=128;i++){ const a=i/128*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*p.orbitRadius,0,Math.sin(a)*p.orbitRadius)); }
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x1e3a5f,transparent:true,opacity:0.7})));
-  const body={ data:p, mesh, angle:Math.random()*Math.PI*2, speed:orbitSpeed(p.periodeOrbitHari), spin:(Math.PI*2)/(Math.abs(p.rotasiJam)/24*20+8)*(p.rotasiJam<0?-1:1), moons:[] };
+  const body={ data:p, mesh, baseAngle:angleFromId(p.id), angle:angleFromId(p.id), speed:orbitSpeed(p.periodeOrbitHari), spin:(Math.PI*2)/(Math.abs(p.rotasiJam)/24*20+8)*(p.rotasiJam<0?-1:1), moons:[] };
   bodies.push(body);
   if(p.ring){ // cincin Saturnus akurat
     const inner=p.renderRadius*1.25, outer=p.renderRadius*2.3;
@@ -136,24 +150,24 @@ for(const p of PLANETS){
 const earth = bodies.find(b=>b.data.id==='bumi');
 const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55,24,24),
   new THREE.MeshStandardMaterial({map:planetTexture(['#b8b8b8','#888','#ddd'],false,55),roughness:1}));
-scene.add(moonMesh); earth.moons.push({mesh:moonMesh,dist:4.2,speed:0.5,angle:0});
+scene.add(moonMesh); earth.moons.push({mesh:moonMesh,dist:4.2,speed:0.5,baseAngle:0,angle:0});
 const moonLabel=addLabelSprite('Bulan'); moonLabel.scale.set(6,1.5,1); moonLabel.position.y=1.2; moonMesh.add(moonLabel);
 // 4 bulan Galileo di Jupiter (titik akurat)
 const jup=bodies.find(b=>b.data.id==='jupiter');
 ['Io','Europa','Ganymede','Callisto'].forEach((nm,i)=>{
   const m=new THREE.Mesh(new THREE.SphereGeometry(0.35,16,16),new THREE.MeshStandardMaterial({color:[0xe8d27a,0xcfe8ff,0x9a8f7f,0x6f7f8f][i]}));
-  scene.add(m); jup.moons.push({mesh:m,dist:9+i*1.6,speed:0.6-i*0.08,angle:i*1.7});
+  scene.add(m); jup.moons.push({mesh:m,dist:9+i*1.6,speed:0.6-i*0.08,baseAngle:i*1.7,angle:i*1.7});
 });
 // Titan di Saturnus
 const sat=bodies.find(b=>b.data.id==='saturnus');
-{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.45,16,16),new THREE.MeshStandardMaterial({color:0xd9a94f})); scene.add(m); sat.moons.push({mesh:m,dist:15,speed:0.25,angle:1}); }
+{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.45,16,16),new THREE.MeshStandardMaterial({color:0xd9a94f})); scene.add(m); sat.moons.push({mesh:m,dist:15,speed:0.25,baseAngle:1,angle:1}); }
 // Pluto (bonus planet katai)
 const plutoData = BONUS.find(b=>b.id==='pluto');
 const plutoMesh = new THREE.Mesh(new THREE.SphereGeometry(plutoData.renderRadius,24,24),
   new THREE.MeshStandardMaterial({map:planetTexture(plutoData.warnaBase,false,77)}));
 const plutoLabel=addLabelSprite('Pluto'); plutoLabel.position.y=2.4; plutoMesh.add(plutoLabel);
 scene.add(plutoMesh);
-const pluto={data:plutoData,mesh:plutoMesh,angle:2,speed:orbitSpeed(plutoData.periodeOrbitHari),spin:0.05,moons:[]};
+const pluto={data:plutoData,mesh:plutoMesh,baseAngle:angleFromId('pluto'),angle:angleFromId('pluto'),speed:orbitSpeed(plutoData.periodeOrbitHari),spin:0.05,moons:[]};
 bodies.push(pluto);
 
 /* Eksoplanet nyata di luar tata surya */
@@ -165,7 +179,7 @@ for(const p of EXOPLANETS){
   scene.add(mesh);
   const pts=[]; for(let i=0;i<=128;i++){ const a=i/128*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*p.orbitRadius,0,Math.sin(a)*p.orbitRadius)); }
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x5f3a8f,transparent:true,opacity:0.6})));
-  bodies.push({data:p,mesh,angle:Math.random()*Math.PI*2,speed:orbitSpeed(p.periodeOrbitHari*(p.lambat||1)),spin:0.15,moons:[]});
+  bodies.push({data:p,mesh,baseAngle:angleFromId(p.id),angle:angleFromId(p.id),speed:orbitSpeed(p.periodeOrbitHari*(p.lambat||1)),spin:0.15,moons:[]});
 }
 
 /* Lubang Hitam Cygnus X-1: horizon + cincin foton + cakram akresi */
@@ -190,7 +204,7 @@ const bhLight=new THREE.PointLight(0xff8855,3,220); bhMesh.add(bhLight);
 scene.add(bhMesh);
 { const pts=[]; for(let i=0;i<=128;i++){ const a=i/128*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(a)*BLACKHOLE.orbitRadius,0,Math.sin(a)*BLACKHOLE.orbitRadius)); }
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x8f2a3f,transparent:true,opacity:0.6}))); }
-const bhBody={data:BLACKHOLE,mesh:bhMesh,angle:4.2,speed:orbitSpeed(BLACKHOLE.periodeOrbitHari),spin:0.02,moons:[],isBlackHole:true};
+const bhBody={data:BLACKHOLE,mesh:bhMesh,baseAngle:angleFromId('cygnus-x1'),angle:angleFromId('cygnus-x1'),speed:orbitSpeed(BLACKHOLE.periodeOrbitHari),spin:0.02,moons:[],isBlackHole:true};
 bodies.push(bhBody);
 
 /* Nebula jauh sebagai latar (murni visual) */
@@ -206,24 +220,29 @@ const asteroidField=(()=>{
   const mesh=new THREE.InstancedMesh(geo,mat,COUNT);
   const dummy=new THREE.Object3D();
   const pos=new Float32Array(COUNT*3), rot=new Float32Array(COUNT*3), scale=new Float32Array(COUNT), alive=new Uint8Array(COUNT);
+  const rnd=makeRng(0xA57E201);
   for(let i=0;i<COUNT;i++){
-    const a=Math.random()*Math.PI*2, r=78+Math.random()*10, s=0.4+Math.random()*1.4;
-    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=(Math.random()-0.5)*3; pos[i*3+2]=Math.sin(a)*r;
-    rot[i*3]=Math.random()*3; rot[i*3+1]=Math.random()*3; rot[i*3+2]=0;
+    const a=rnd()*Math.PI*2, r=78+rnd()*10, s=0.4+rnd()*1.4;
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=(rnd()-0.5)*3; pos[i*3+2]=Math.sin(a)*r;
+    rot[i*3]=rnd()*3; rot[i*3+1]=rnd()*3; rot[i*3+2]=0;
     scale[i]=s; alive[i]=1;
     dummy.position.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
     dummy.rotation.set(rot[i*3],rot[i*3+1],rot[i*3+2]);
     dummy.scale.set(s,s,s); dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
   }
   mesh.instanceMatrix.needsUpdate=true; scene.add(mesh);
-  const hide=i=>{ // hancur: matrix diskalakan 0 supaya tidak digambar
-    alive[i]=0;
+  const setAlive=(i,on)=>{
+    if(!Number.isInteger(i)||i<0||i>=COUNT)return;
+    if(alive[i]===(on?1:0))return;
+    alive[i]=on?1:0;
     dummy.position.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
     dummy.rotation.set(rot[i*3],rot[i*3+1],rot[i*3+2]);
-    dummy.scale.setScalar(0); dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
+    dummy.scale.setScalar(on?scale[i]:0);
+    dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
     mesh.instanceMatrix.needsUpdate=true;
   };
-  return {COUNT,mesh,pos,rot,scale,alive,hide};
+  const hide=i=>setAlive(i,false); // hancur: matrix diskalakan 0 supaya tidak digambar
+  return {COUNT,mesh,pos,rot,scale,alive,setAlive,hide};
 })();
 
 /* ============ BIMA SAKTI & GALAKSI LAIN ============ */
@@ -679,6 +698,7 @@ const S = { playing:false, cockpit:false, yaw:Math.PI, pitch:0, vel:new THREE.Ve
   boost:false, warpDrive:false, timeWarp:1, target:null, follow:null, visited:new Set(), rocketId:'nsx-vanguard',
   sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null,
   playerName:'', roomCode:'' };
+let worldTime=0;
 const keys={};
 addEventListener('keydown',e=>{
   keys[e.code]=true;
@@ -773,6 +793,289 @@ const remotePlayers=new Map();
 let net=null;
 let netAccum=0;
 let mpStatus='idle';
+const WORLD_SNAPSHOT_MS=200;
+const WORLD_PING_MS=1800;
+const WORLD_HOST_TIMEOUT_MS=3500;
+const worldNet={
+  hostId:null, hostSeenAt:0, selfHost:false, seq:0, snapAccum:0,
+  lastPingAt:0, pingSeq:0, pings:new Map(), latency:0.05, latencySamples:[],
+  clockReady:false, clockBase:0, clockAt:0, clockWarp:1,
+  lastSnapshot:null, electionTimer:null, lastPeerJoinAt:0, electionForce:false
+};
+
+function isWorldHost(){ return !net || worldNet.selfHost; }
+function currentWorldTime(){
+  if(!worldNet.clockReady)return worldTime;
+  return worldNet.clockBase + (performance.now()-worldNet.clockAt)/1000*worldNet.clockWarp;
+}
+function setWorldClock(base,at,warp){
+  worldNet.clockBase=base;
+  worldNet.clockAt=at;
+  worldNet.clockWarp=warp;
+  worldNet.clockReady=true;
+}
+function updateWorldControls(){
+  const host=isWorldHost();
+  document.querySelectorAll('.warp-btn').forEach(b=>{
+    b.disabled=!host;
+    b.title=host?'Atur kecepatan waktu dunia':'Host dunia yang mengatur kecepatan waktu';
+  });
+}
+function adoptWorldHost(id,announce=false){
+  if(!id||!net)return;
+  const changed=worldNet.hostId!==id;
+  if(changed){
+    if(worldNet.selfHost&&id!==net.selfId)worldNet.selfHost=false;
+    worldNet.hostId=id;
+    worldNet.selfHost=id===net.selfId;
+    if(!worldNet.selfHost)worldNet.clockReady=false;
+    worldNet.latencySamples.length=0;
+    updateOnlineUI();
+    if(announce&&!worldNet.selfHost)toast('👑 Host dunia berganti — sinkronisasi ulang...',3200);
+  }
+  worldNet.hostSeenAt=performance.now();
+}
+function hostClaimWins(seq,hostId){
+  if(!worldNet.selfHost)return true;
+  const incoming=Number(seq)||0;
+  if(incoming!==worldNet.seq)return incoming>worldNet.seq;
+  return hostId<net.selfId;
+}
+function becomeWorldHost(){
+  if(!net||worldNet.selfHost)return;
+  worldTime=currentWorldTime();
+  worldNet.hostId=net.selfId;
+  worldNet.selfHost=true;
+  worldNet.hostSeenAt=performance.now();
+  worldNet.clockReady=true;
+  worldNet.clockBase=worldTime;
+  worldNet.clockAt=performance.now();
+  worldNet.clockWarp=S.timeWarp;
+  worldNet.seq=0;
+  updateOnlineUI();
+  net.sendWorld({k:'claim',h:net.selfId,s:worldNet.seq});
+  broadcastWorldSnapshot();
+  toast('👑 Kamu host dunia — posisi, HP, dan waktu orbit tersinkron.',3600);
+}
+function maybeClaimWorldHost(){
+  if(!net||mpStatus!=='online')return;
+  const now=performance.now();
+  if(worldNet.hostId&&now-worldNet.hostSeenAt<WORLD_HOST_TIMEOUT_MS)return;
+  if(worldNet.hostId){
+    worldNet.hostId=null;
+    worldNet.selfHost=false;
+    worldNet.clockReady=false;
+    updateOnlineUI();
+  }
+  if(!worldNet.electionForce&&net.getPeerIds().length>0&&now-worldNet.lastPeerJoinAt<2000)return;
+  worldNet.electionForce=false;
+  const ids=[net.selfId,...net.getPeerIds()].sort();
+  if(ids[0]===net.selfId)becomeWorldHost();
+}
+function startWorldElection(){
+  if(!net)return;
+  if(worldNet.electionTimer)clearInterval(worldNet.electionTimer);
+  setTimeout(maybeClaimWorldHost,600);
+  worldNet.electionTimer=setInterval(maybeClaimWorldHost,1500);
+}
+
+function encodeAsteroids(){
+  const bytes=new Uint8Array(Math.ceil(asteroidField.COUNT/8));
+  for(let i=0;i<asteroidField.COUNT;i++)if(!asteroidField.alive[i])bytes[i>>3]|=1<<(i&7);
+  let raw=''; for(let i=0;i<bytes.length;i++)raw+=String.fromCharCode(bytes[i]);
+  try{ return btoa(raw); }catch{ return ''; }
+}
+function decodeAsteroids(encoded){
+  if(typeof encoded!=='string'||encoded.length>1024)return;
+  let raw='';
+  try{ raw=atob(encoded); }catch{ return; }
+  for(let i=0;i<asteroidField.COUNT;i++){
+    const dead=(i>>3)<raw.length?(raw.charCodeAt(i>>3)>>(i&7)&1):0;
+    asteroidField.setAlive(i,!dead);
+  }
+}
+function entitySnapshot(){
+  const out={};
+  for(const e of entities){
+    const id=e.data?.id;
+    if(!id)continue;
+    out[id]={
+      hp:e.destroyed?0:Math.max(0,Math.min(e.maxHp,Math.round(e.hp))),
+      d:e.destroyed?1:0,
+      r:e.destroyed?Math.max(0,Math.round(e.respawnAt-performance.now())):0
+    };
+  }
+  return out;
+}
+function buildWorldSnapshot(){
+  return {
+    k:'snap',
+    h:net?.selfId||'',
+    w:+(worldNet.selfHost?currentWorldTime():worldTime).toFixed(3),
+    warp:S.timeWarp,
+    seq:worldNet.seq++,
+    ents:entitySnapshot(),
+    ast:encodeAsteroids()
+  };
+}
+function broadcastWorldSnapshot(targetId){
+  if(!net||!worldNet.selfHost)return;
+  worldNet.hostSeenAt=performance.now();
+  net.sendWorld(buildWorldSnapshot(),targetId);
+}
+function applyWorldSnapshot(msg){
+  if(!net||!msg||msg.k!=='snap'||typeof msg.h!=='string'||!msg.h)return;
+  if(msg.h!==worldNet.hostId){
+    if(worldNet.selfHost&&!hostClaimWins(msg.seq,msg.h))return;
+    adoptWorldHost(msg.h);
+  }
+  if(!worldNet.selfHost)worldNet.hostSeenAt=performance.now();
+  const warp=[1,10,100].includes(Number(msg.warp))?Number(msg.warp):1;
+  S.timeWarp=warp;
+  document.querySelectorAll('.warp-btn').forEach(x=>x.classList.toggle('active',+x.dataset.warp===warp));
+  const hostW=Number(msg.w);
+  if(Number.isFinite(hostW)){
+    const target=hostW+worldNet.latency*warp;
+    const predicted=currentWorldTime();
+    if(!worldNet.clockReady||Math.abs(target-predicted)>Math.max(0.5,warp*0.1)||Math.abs(warp-worldNet.clockWarp)>0.01){
+      setWorldClock(target,performance.now(),warp);
+    } else {
+      worldNet.clockBase=predicted+(target-predicted)*0.35;
+      worldNet.clockAt=performance.now();
+      worldNet.clockWarp=warp;
+      worldNet.clockReady=true;
+    }
+  }
+  if(msg.ents&&typeof msg.ents==='object')applyEntitySnapshot(msg.ents);
+  if(typeof msg.ast==='string')decodeAsteroids(msg.ast);
+  worldNet.lastSnapshot=msg;
+  updateWorldControls();
+}
+function applyEntitySnapshot(ents){
+  for(const [id,v] of Object.entries(ents)){
+    const e=entityByDataId.get(id);
+    if(!e||!v||typeof v!=='object')continue;
+    const hp=Number(v.hp);
+    const dead=!!v.d;
+    if(dead){
+      const remaining=Math.max(0,Number(v.r)||0);
+      if(e.destroyed)e.respawnAt=performance.now()+remaining;
+      else destroyEntity(e,null,{silent:true,respawnInMs:remaining,skipShipReposition:true});
+    } else {
+      if(e.destroyed)respawnEntity(e,{silent:true,skipShipReposition:true});
+      if(Number.isFinite(hp))e.hp=Math.max(0,Math.min(e.maxHp,Math.round(hp)));
+    }
+  }
+  if(S.panelKey)refreshEntityPanel(S.panelKey);
+}
+function broadcastWorldEvent(event){
+  if(!net||!worldNet.selfHost)return;
+  net.sendWorld({...event,k:'ev',h:net.selfId});
+}
+function applyWorldEvent(msg){
+  if(!net||!worldNet.hostId||msg.h!==worldNet.hostId)return;
+  if(msg.kind==='respawn'&&typeof msg.id==='string'){
+    const e=entityByDataId.get(msg.id);
+    if(e&&e.destroyed)respawnEntity(e,{skipShipReposition:true});
+    return;
+  }
+  if(msg.kind==='hit'&&typeof msg.id==='string'){
+    const e=entityByDataId.get(msg.id);
+    if(!e||e.destroyed)return;
+    const hp=Number(msg.hp);
+    if(Number.isFinite(hp))e.hp=Math.max(0,Math.min(e.maxHp,Math.round(hp)));
+    if(S.aimTarget?.ent===e)updateAimHud({kind:'entity',ent:e});
+    refreshEntityPanel(msg.id);
+    return;
+  }
+  if(msg.kind==='destroy'){
+    if(Number.isInteger(msg.i)&&msg.i>=0&&msg.i<asteroidField.COUNT){
+      asteroidField.hide(msg.i);
+      return;
+    }
+    if(typeof msg.id==='string'){
+      const e=entityByDataId.get(msg.id);
+      if(e&&!e.destroyed)destroyEntity(e,null,{respawnInMs:Math.max(0,Number(msg.r)||RESPAWN_MS)});
+    }
+  }
+}
+function applyWorldMessage(peerId,msg){
+  if(!msg||typeof msg!=='object')return;
+  if(msg.k==='hello'){
+    if(worldNet.selfHost)sendSnapshotToPeer(peerId);
+    return;
+  }
+  if(msg.k==='claim'&&typeof msg.h==='string'&&msg.h){
+    if(worldNet.selfHost&&!hostClaimWins(msg.s,msg.h)){
+      sendSnapshotToPeer(peerId);
+      return;
+    }
+    const current=worldNet.hostId;
+    const stale=performance.now()-worldNet.hostSeenAt>WORLD_HOST_TIMEOUT_MS;
+    const selfLower=current===net?.selfId&&msg.h<current;
+    if((!current||stale||selfLower)&&(!current||selfLower||msg.h<current))adoptWorldHost(msg.h,true);
+    return;
+  }
+  if(msg.k==='snap'){
+    applyWorldSnapshot(msg);
+    return;
+  }
+  if(msg.k==='warp'&&msg.h===worldNet.hostId){
+    const warp=[1,10,100].includes(Number(msg.warp))?Number(msg.warp):1;
+    S.timeWarp=warp;
+    document.querySelectorAll('.warp-btn').forEach(x=>x.classList.toggle('active',+x.dataset.warp===warp));
+    const w=Number(msg.w);
+    if(Number.isFinite(w))setWorldClock(w+worldNet.latency*warp,performance.now(),warp);
+    if(!worldNet.selfHost)toast(`⏱️ Host mengubah waktu menjadi ${warp}×`,2400);
+    return;
+  }
+  if(msg.k==='ping'&&worldNet.selfHost){
+    net.sendWorld({k:'pong',id:msg.id,w:+currentWorldTime().toFixed(3),warp:S.timeWarp},peerId);
+    return;
+  }
+  if(msg.k==='pong'&&msg.id&&worldNet.pings.has(msg.id)){
+    const sentAt=worldNet.pings.get(msg.id);
+    worldNet.pings.delete(msg.id);
+    const now=performance.now(), rtt=now-sentAt;
+    if(rtt>=0&&rtt<1200){
+      const samples=worldNet.latencySamples;
+      samples.push(Math.min(0.5,rtt/2000));
+      if(samples.length>5)samples.shift();
+      if(samples.length>=3){
+        const sorted=[...samples].sort((a,b)=>a-b);
+        worldNet.latency=sorted[Math.floor(sorted.length/2)];
+      }
+      const hostW=Number(msg.w);
+      if(Number.isFinite(hostW)){
+        const warp=[1,10,100].includes(Number(msg.warp))?Number(msg.warp):S.timeWarp;
+        worldNet.clockWarp=warp;
+        worldNet.clockBase=hostW;
+        worldNet.clockAt=sentAt+rtt/2;
+        worldNet.clockReady=true;
+      }
+    }
+    return;
+  }
+  if(worldNet.selfHost&&msg.k==='hit'){
+    applyWorldHit(msg.kind,msg.id,msg.i,null,true);
+    return;
+  }
+  if(msg.k==='ev')applyWorldEvent(msg);
+}
+function sendSnapshotToPeer(peerId){
+  if(!net||!worldNet.selfHost||!peerId)return;
+  net.sendWorld(buildWorldSnapshot(),peerId);
+}
+function sendWorldPing(){
+  if(!net||worldNet.selfHost||!worldNet.hostId)return;
+  const now=performance.now();
+  if(now-worldNet.lastPingAt<WORLD_PING_MS)return;
+  worldNet.lastPingAt=now;
+  const id=`${net.selfId}:${worldNet.pingSeq++}`;
+  worldNet.pings.set(id,now);
+  net.sendWorld({k:'ping',id},worldNet.hostId);
+}
+
 const _netCamPos=new THREE.Vector3();
 const _netEuler=new THREE.Euler(0,0,0,'YXZ');
 
@@ -935,12 +1238,14 @@ function updateRemotePlayers(dt){
 function updateOnlineUI(){
   const count=remotePlayers.size+1;
   const hud=$('hud-players'); if(hud)hud.textContent=`👥 ${count}`;
+  updateWorldControls();
   const note=$('mp-status'); if(!note)return;
   note.className='lobby-note';
   if(mpStatus==='online'&&net){
     const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
+    const role=worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host');
     note.classList.add('online');
-    note.textContent=`🌐 Online · ${room} · ${count} pemain`;
+    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}`;
   } else if(mpStatus==='connecting'){
     note.textContent='🌐 Menghubungkan ke ruang P2P...';
   } else if(mpStatus==='offline'){
@@ -999,8 +1304,24 @@ function beginMultiplayer(){
     roomCode:S.roomCode,
     getLocalState:localNetState,
     onState:applyPeerState,
-    onPeerJoin:()=>updateOnlineUI(),
-    onPeerLeave:peerId=>{ removeRemotePlayer(peerId); updateOnlineUI(); },
+    onWorld:applyWorldMessage,
+    onPeerJoin:peerId=>{
+      worldNet.lastPeerJoinAt=performance.now();
+      updateOnlineUI();
+      if(worldNet.selfHost)sendSnapshotToPeer(peerId);
+    },
+    onPeerLeave:peerId=>{
+      removeRemotePlayer(peerId);
+      if(peerId===worldNet.hostId){
+        worldNet.hostId=null;
+        worldNet.selfHost=false;
+        worldNet.clockReady=false;
+        worldNet.electionForce=true;
+        updateOnlineUI();
+        setTimeout(maybeClaimWorldHost,500);
+      }
+      updateOnlineUI();
+    },
     onJoinError:()=>toast('⚠️ Gagal tersambung ke salah satu pemain — kemungkinan NAT ketat.',4200)
   }).then(mp=>{
     if(!mp){
@@ -1012,6 +1333,8 @@ function beginMultiplayer(){
     net=mp;
     mpStatus='online';
     updateOnlineUI();
+    net.sendWorld({k:'hello'});
+    startWorldElection();
     toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
   }).catch(()=>{
     mpStatus='offline';
@@ -1037,12 +1360,25 @@ $('m-thrust').onclick=()=>{S.boost=!S.boost;toast(S.boost?'⚡ Boost ON':'Boost 
 $('m-info').onclick=showNearestInfo;
 document.querySelectorAll('.warp-btn').forEach(b=>b.onclick=()=>{
   if(S.target||S.follow){ toast('⏳ Warp waktu dikunci selama autopilot/mode ikuti (agar rendezvous presisi)'); return; }
+  if(net&&!isWorldHost()){ toast('👑 Host dunia yang mengatur kecepatan waktu.'); return; }
   setTimeWarp(+b.dataset.warp); });
-function setTimeWarp(w){
-  S.timeWarp=w;
+function applyWarpUI(w){
   document.querySelectorAll('.warp-btn').forEach(x=>x.classList.toggle('active',+x.dataset.warp===w));
 }
+function setTimeWarp(w,options={}){
+  if(net&&!isWorldHost()&&!options.remote){ toast('👑 Host dunia yang mengatur kecepatan waktu.'); return; }
+  const base=currentWorldTime(), now=performance.now();
+  S.timeWarp=w;
+  applyWarpUI(w);
+  if(net&&worldNet.selfHost&&!options.remote){
+    worldTime=base;
+    setWorldClock(base,now,w);
+    net.sendWorld({k:'warp',h:net.selfId,w:+base.toFixed(3),warp:w});
+    broadcastWorldSnapshot();
+  }
+}
 function restoreWarp(){
+  if(net)return;
   if(S.savedWarp!=null){ setTimeWarp(S.savedWarp); S.savedWarp=null; }
 }
 function toggleMap(){ $('map-panel').classList.toggle('hidden'); }
@@ -1065,7 +1401,12 @@ $('btn-stop-nav').onclick=()=>{S.target=null;S.follow=null;restoreWarp();renderP
   roomInput.addEventListener('input',refreshLobbyState);
   refreshLobbyState();
 }
-addEventListener('pagehide',()=>{ net?.leave(); net=null; });
+addEventListener('pagehide',()=>{
+  if(worldNet.electionTimer)clearInterval(worldNet.electionTimer);
+  worldNet.electionTimer=null;
+  net?.leave();
+  net=null;
+});
 $('btn-launch').onclick=()=>{
   if(S.playing)return;
   const name=sanitizePilotName($('player-name').value);
@@ -1125,12 +1466,13 @@ function flyTo(id){
   const b=bodies.find(x=>x.data.id===id); if(!b)return;
   if(b.entity?.destroyed){ toast('💥 Target hancur — tunggu respawn 60 detik'); return; }
   S.follow=null; S.target=b;
-  // Kunci warp waktu ke 1x selama autopilot: planet super-cepat (Proxima:
-  // 1 putaran ≈ 4 dtk) mustahil direndezvous saat time-warp besar.
-  if(S.savedWarp==null)S.savedWarp=S.timeWarp;
-  setTimeWarp(1);
+  // Di multiplayer, warp adalah milik host agar orbit semua pemain tetap sama.
+  if(!net){
+    if(S.savedWarp==null)S.savedWarp=S.timeWarp;
+    setTimeWarp(1);
+  }
   renderPlanetList(); toggleMapIfOpen(); $('hud-target').textContent=`🎯 ${b.data.name}`;
-  toast(`🧭 Autopilot → ${b.data.name} (warp waktu 1× otomatis). Gerakkan mouse/WASD untuk batal.`);
+  toast(net?`🧭 Autopilot → ${b.data.name} (waktu mengikuti host). Gerakkan mouse/WASD untuk batal.`:`🧭 Autopilot → ${b.data.name} (warp waktu 1× otomatis). Gerakkan mouse/WASD untuk batal.`);
 }
 function toggleMapIfOpen(){ if(!$('map-panel').classList.contains('hidden'))$('map-panel').classList.add('hidden'); }
 
@@ -1158,6 +1500,12 @@ function openPanel(d){
   $('planet-panel').classList.remove('hidden');
 }
 function closePanel(){ $('planet-panel').classList.add('hidden'); S.panelKey=null; }
+function refreshEntityPanel(id){
+  if(S.panelKey!==id)return;
+  const e=entityByDataId.get(id);
+  if(!e)return;
+  $('pp-grid').innerHTML=bodyInfoHTML(e.data);
+}
 function showNearestInfo(){
   const nearSun=shipGroup.position.length()<30&&!sunEntity.destroyed;
   const d=S.nearBody?S.nearBody.data:(nearSun?SUN:null);
@@ -1319,25 +1667,32 @@ function destroyAsteroid(i,point){
   sfxExplosion(false); flashCrosshair();
 }
 
-function destroyEntity(ent,point){
-  ent.destroyed=true; ent.hp=0; ent.respawnAt=performance.now()+RESPAWN_MS;
+function destroyEntity(ent,point,options={}){
+  const wasDestroyed=ent.destroyed;
+  const silent=!!options.silent;
+  const respawnInMs=Number.isFinite(options.respawnInMs)?Math.max(0,options.respawnInMs):RESPAWN_MS;
+  ent.destroyed=true; ent.hp=0; ent.respawnAt=performance.now()+respawnInMs;
   if(ent.kind==='sun'){ sunMesh.visible=false; glow.visible=false; sunLight.intensity=0; }
   else ent.mesh.visible=false;
   if(ent.body?.moons)for(const m of ent.body.moons)m.mesh.visible=false;
-  const pos=point?point.clone():ent.mesh.position.clone();
-  addFlash(pos,ent.kind==='sun'?'#ffdd66':(ent.data.warna||ent.color||'#ffcc88'),Math.max(2.5,ent.hitRadius*0.55),0.75);
-  spawnDebris(pos,entityColors(ent),ent.isBig?34:22,ent.isBig?13:8,Math.max(0.14,ent.hitRadius*0.085));
-  sfxExplosion(true); flashCrosshair();
   if(S.target===ent.body){ S.target=null; restoreWarp(); $('hud-target').textContent='🎯 —'; }
   if(S.follow===ent.body)S.follow=null;
   if(S.nearBody&&S.nearBody.data.id===ent.data.id)S.nearBody=null;
   if(S.panelKey===ent.data.id)closePanel();
   S.aimTarget=null; updateAimHud(null);
-  toast(`${ent.kind==='sun'?'☀️ Matahari':(ent.data.emoji||'💥')+' '+ent.name} hancur! Respawn 60 dtk.`,3600);
+  if(!silent&&!wasDestroyed){
+    const pos=point?point.clone():ent.mesh.position.clone();
+    addFlash(pos,ent.kind==='sun'?'#ffdd66':(ent.data.warna||ent.color||'#ffcc88'),Math.max(2.5,ent.hitRadius*0.55),0.75);
+    spawnDebris(pos,entityColors(ent),ent.isBig?34:22,ent.isBig?13:8,Math.max(0.14,ent.hitRadius*0.085));
+    sfxExplosion(true); flashCrosshair();
+    toast(`${ent.kind==='sun'?'☀️ Matahari':(ent.data.emoji||'💥')+' '+ent.name} hancur! Respawn 60 dtk.`,3600);
+  }
   renderPlanetList();
 }
 
-function respawnEntity(ent){
+function respawnEntity(ent,options={}){
+  const wasDestroyed=ent.destroyed;
+  const silent=!!options.silent;
   ent.destroyed=false; ent.hp=ent.maxHp; ent.respawnAt=0;
   if(ent.kind==='sun'){ sunMesh.visible=true; glow.visible=true; sunLight.intensity=2.2; }
   else if(ent.kind==='moon')ent.mesh.visible=!ent.parent?.entity?.destroyed;
@@ -1346,13 +1701,41 @@ function respawnEntity(ent){
     if(m.mesh===moonMesh && moonEntity.destroyed)continue;
     m.mesh.visible=true;
   }
-  const p=ent.mesh.position;
-  if(shipGroup.position.distanceTo(p)<ent.hitRadius+2){
-    _shotEnd.copy(shipGroup.position).sub(p); if(_shotEnd.lengthSq()<1e-6)_shotEnd.set(0,0,1);
-    shipGroup.position.copy(p).addScaledVector(_shotEnd.normalize(),ent.hitRadius+6);
+  if(!silent&&!options.skipShipReposition){
+    const p=ent.mesh.position;
+    if(shipGroup.position.distanceTo(p)<ent.hitRadius+2){
+      _shotEnd.copy(shipGroup.position).sub(p); if(_shotEnd.lengthSq()<1e-6)_shotEnd.set(0,0,1);
+      shipGroup.position.copy(p).addScaledVector(_shotEnd.normalize(),ent.hitRadius+6);
+    }
+    if(wasDestroyed){
+      addFlash(p,'#aef6ff',Math.max(3,ent.hitRadius*0.6),0.5);
+      toast(`♻️ ${ent.name} kembali!`,2200);
+    }
   }
-  addFlash(p,'#aef6ff',Math.max(3,ent.hitRadius*0.6),0.5);
-  toast(`♻️ ${ent.name} kembali!`,2200); renderPlanetList();
+  renderPlanetList();
+  refreshEntityPanel(ent.data.id);
+}
+
+function applyWorldHit(kind,id,index,point,remote=false){
+  if(kind==='asteroid'){
+    if(!Number.isInteger(index)||index<0||index>=asteroidField.COUNT||!asteroidField.alive[index])return;
+    destroyAsteroid(index,point||new THREE.Vector3(asteroidField.pos[index*3],asteroidField.pos[index*3+1],asteroidField.pos[index*3+2]));
+    if(net&&worldNet.selfHost)broadcastWorldEvent({kind:'destroy',i:index});
+    return;
+  }
+  const e=entityByDataId.get(id);
+  if(!e||e.destroyed)return;
+  e.hp=Math.max(0,e.hp-1);
+  const pos=point?point.clone():e.mesh.position.clone();
+  if(e.hp<=0){
+    destroyEntity(e,point);
+    if(net&&worldNet.selfHost)broadcastWorldEvent({kind:'destroy',id,hp:0,r:RESPAWN_MS});
+  } else {
+    if(!remote){ spawnDebris(pos,entityColors(e),3,4,0.08); flashCrosshair(); }
+    if(S.aimTarget?.ent===e)updateAimHud({kind:'entity',ent:e});
+    refreshEntityPanel(id);
+    if(net&&worldNet.selfHost)broadcastWorldEvent({kind:'hit',id,hp:e.hp});
+  }
 }
 
 function fireLaser(){
@@ -1372,11 +1755,15 @@ function fireLaser(){
   sfxLaser();
   if(!hit)return;
   addFlash(_shotEnd,'#ffd7a0',hit.kind==='asteroid'?0.9:Math.min(5,1.8+(hit.ent?hit.ent.hitRadius*0.05:0)),0.22);
-  if(hit.kind==='asteroid'){ destroyAsteroid(hit.index,_shotEnd); return; }
-  const e=hit.ent;
-  e.hp=Math.max(0,e.hp-1); flashCrosshair(); updateAimHud(hit);
-  if(e.hp<=0)destroyEntity(e,_shotEnd);
-  else spawnDebris(_shotEnd,entityColors(e),3,4,0.08);
+  if(net&&!isWorldHost()){
+    if(worldNet.hostId){
+      const payload=hit.kind==='asteroid'?{kind:'asteroid',i:hit.index}:{kind:'entity',id:hit.ent.data.id};
+      net.sendWorld({...payload,k:'hit'},worldNet.hostId);
+    }
+    return;
+  }
+  if(hit.kind==='asteroid'){ applyWorldHit('asteroid',null,hit.index,_shotEnd); return; }
+  applyWorldHit('entity',hit.ent.data.id,null,_shotEnd);
 }
 
 function updateCombat(dt){
@@ -1401,7 +1788,12 @@ function updateEffects(dt){
     d.mesh.material.opacity=Math.max(0,d.life/d.max); d.mesh.scale.multiplyScalar(1-dt*0.16);
   }
   const now=performance.now();
-  for(const e of entities)if(e.destroyed&&now>=e.respawnAt)respawnEntity(e);
+  if(isWorldHost()){
+    for(const e of entities)if(e.destroyed&&now>=e.respawnAt){
+      respawnEntity(e);
+      broadcastWorldEvent({kind:'respawn',id:e.data.id});
+    }
+  }
 }
 
 // input laser
@@ -1466,23 +1858,41 @@ function bodyVelocity(b, out){
 
 function animate(){
   requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),0.05);
+  const rawDt=clock.getDelta();
+  const dt=Math.min(rawDt,0.05);
   fpsA=fpsA*0.95+(1/Math.max(dt,1e-4))*0.05;
 
   // orbit planet (timeWarp mempercepat revolusi edukatif)
-  const t=dt*S.timeWarp;
+  const remoteClock=!!(net&&!worldNet.selfHost&&worldNet.clockReady);
+  let orbitT;
+  if(remoteClock){
+    orbitT=currentWorldTime();
+  } else if(net&&worldNet.selfHost&&worldNet.clockReady){
+    worldTime=currentWorldTime();
+    orbitT=worldTime;
+  } else {
+    worldTime+=dt*S.timeWarp;
+    orbitT=worldTime;
+  }
   for(const b of bodies){
     if(b.fixed){ if(!b.entity?.destroyed&&b.tick)b.tick(dt); continue; } // objek statis: bima sakti & galaksi lain
-    b.angle+=b.speed*t; b.mesh.position.set(Math.cos(b.angle)*b.data.orbitRadius,0,Math.sin(b.angle)*b.data.orbitRadius);
-    b.mesh.rotation.y+=b.spin*dt*S.timeWarp;
-    for(const m of b.moons){ m.angle+=m.speed*t; m.mesh.position.set(b.mesh.position.x+Math.cos(m.angle)*m.dist,0.5,b.mesh.position.z+Math.sin(m.angle)*m.dist); }
+    b.angle=b.baseAngle+b.speed*orbitT;
+    b.mesh.position.set(Math.cos(b.angle)*b.data.orbitRadius,0,Math.sin(b.angle)*b.data.orbitRadius);
+    b.mesh.rotation.y=b.spin*orbitT;
+    for(const m of b.moons){ m.angle=m.baseAngle+m.speed*orbitT; m.mesh.position.set(b.mesh.position.x+Math.cos(m.angle)*m.dist,0.5,b.mesh.position.z+Math.sin(m.angle)*m.dist); }
   }
   sunMesh.rotation.y+=dt*0.02;
   bhDisk.rotation.z+=dt*0.5; photon.rotation.z-=dt*0.25; // cakram akresi berputar
   updateEffects(dt);
   if(net&&S.playing){
-    netAccum+=dt;
+    netAccum+=rawDt;
     if(netAccum>=0.1){ netAccum=0; net.sendState(); }
+    if(worldNet.selfHost){
+      worldNet.snapAccum+=rawDt;
+      if(worldNet.snapAccum>=WORLD_SNAPSHOT_MS/1000){ worldNet.snapAccum=0; broadcastWorldSnapshot(); }
+    } else {
+      sendWorldPing();
+    }
   }
   updateRemotePlayers(dt);
 

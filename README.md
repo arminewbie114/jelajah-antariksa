@@ -18,8 +18,11 @@ Atau pakai ekstensi *Live Server* di VS Code.
 - **Nama pilot wajib** diisi sebelum meluncur (2–16 karakter). Nama terakhir disimpan di `localStorage`.
 - **Kode ruangan kosong** = ruang publik `nusantara-public-v1`. Isi kode yang sama di beberapa perangkat untuk membuat ruang privat, mis. `teman-kecil`.
 - Pemain lain tampil sebagai pesawat yang sama pilihannya + name tag. Jumlah pemain ada di HUD (`👥`).
-- Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. Data state pesawat dikirim ±10×/detik.
-- Belum ada chat, PvP, atau server otoritatif; pemain lain hanya visual. Koneksi WebRTC bisa gagal di NAT ketat/jaringan seluler karena tidak memakai TURN server.
+- **Dunia tersinkron:** satu pemain menjadi **host dunia** (ditandai 👑). Host mengirim snapshot posisi orbit, HP, status hancur, dan timer respawn semua planet/bulan/objek Bima Sakti/galaksi ±5×/detik. Asteroid tetap deterministik dan status hancurnya ikut disinkronkan.
+- **Warp global:** host mengatur waktu dunia `1× / 10× / 100×`; tombol warp pemain lain dinonaktifkan agar semua orbit tetap sama. Autopilot di multiplayer mengikuti warp host (offline tetap otomatis 1×).
+- **Host migration:** jika host keluar, pemain tersisa memilih host baru dan melanjutkan state dunia terakhir. Progres kunjungan `S.visited` tetap **personal** tiap pemain.
+- Kapal pemain lain tetap visual (belum ada PvP/chat). Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. State pesawat dikirim ±10×/detik.
+- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi WebRTC bisa gagal di NAT ketat/jaringan seluler karena tidak memakai TURN server.
 - Jika CDN/relay tidak tersedia, game tetap bisa dimainkan **offline** setelah nama diisi.
 
 ## Kontrol
@@ -32,7 +35,7 @@ Atau pakai ekstensi *Live Server* di VS Code.
 - **Asteroid hancur dalam 1 tembakan** dan terurai menjadi pecahan.
 - **Planet/bulan** butuh beberapa tembakan; **objek raksasa** (Matahari, bintang, nebula, galaksi, lubang hitam) butuh puluhan–ratusan tembakan.
 - Setiap objek punya HP di `js/dataPlanets.js`; HP target tampil di bawah crosshair dan di panel info.
-- Semua objek yang hancur **kembali otomatis setelah 60 detik** (asteroid tidak respawn). Autopilot otomatis batal bila target hancur.
+- Semua objek yang hancur **kembali otomatis setelah 60 detik** (asteroid tidak respawn). Di multiplayer, HP, kehancuran, dan respawn disinkronkan oleh host; asteroid yang sudah hancur tetap hilang untuk semua pemain selama sesi. Autopilot otomatis batal bila target hancur.
 
 ## Yang bisa dijelajahi
 - Tata Surya: Merkurius–Neptunus, Pluto, Bulan, Matahari, Cygnus X-1.
@@ -54,8 +57,8 @@ Diameter, jarak AU, periode orbit, suhu, dan gravitasi planet mengacu NASA Plane
 index.html       — splash, HUD, panel info, peta, kontrol mobile
 css/style.css    — tema UI
 js/dataPlanets.js — data NASA + Bima Sakti + galaksi (sumber kebenaran)
-js/main.js       — scene, orbit, pesawat, FPS/touch, autopilot, minimap, audio, remote player
-js/multiplayer.js — Trystero P2P, sanitasi nama/kode ruangan, presence state
+js/main.js       — scene, orbit deterministik, pesawat, FPS/touch, autopilot, minimap, audio, remote player, host dunia
+js/multiplayer.js — Trystero P2P, sanitasi nama/kode ruangan, presence + kanal world
 ```
 
 ## Verifikasi cepat
@@ -64,4 +67,4 @@ python3 -m http.server 8080 --bind 0.0.0.0
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/index.html
 ```
 
-Uji multiplayer cepat: buka dua tab, isi nama berbeda dan kode ruangan yang sama, lalu bandingkan HUD `👥 2`. Untuk menguji fallback, blokir `cdn.jsdelivr.net` — splash tetap bisa diluncurkan dan status berubah menjadi offline.
+Uji multiplayer cepat: buka dua tab, isi nama berbeda dan kode ruangan yang sama, lalu bandingkan HUD `👥 2`, posisi orbit, tombol warp hanya aktif di host, dan HP/asteroid yang hancur di satu tab ikut berubah di tab lain. Untuk menguji fallback, blokir `cdn.jsdelivr.net` — splash tetap bisa diluncurkan dan status berubah menjadi offline.

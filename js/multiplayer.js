@@ -45,12 +45,16 @@ export async function startMultiplayer(options={}){
       onJoinError:details=>options.onJoinError?.(details)
     });
     const shipAction=room.makeAction('ship');
+    const worldAction=room.makeAction('world');
     const localState=()=>{
       try{ return options.getLocalState?.(); }catch{ return null; }
     };
 
     shipAction.onMessage=(data,{peerId})=>{
       if(data&&typeof data==='object')options.onState?.(peerId,data);
+    };
+    worldAction.onMessage=(data,{peerId})=>{
+      if(data&&typeof data==='object')options.onWorld?.(peerId,data);
     };
 
     room.onPeerJoin=peerId=>{
@@ -59,6 +63,11 @@ export async function startMultiplayer(options={}){
       options.onPeerJoin?.(peerId);
     };
     room.onPeerLeave=peerId=>options.onPeerLeave?.(peerId);
+
+    const getPeerIds=()=>{
+      const peers=room.getPeers();
+      return peers instanceof Map?[...peers.keys()]:Object.keys(peers||{});
+    };
 
     return {
       selfId,
@@ -73,9 +82,12 @@ export async function startMultiplayer(options={}){
         const state=localState();
         if(state)sendSafe(shipAction,state,{target:peerId});
       },
+      sendWorld(data,targetId){
+        sendSafe(worldAction,data,targetId?{target:targetId}:undefined);
+      },
+      getPeerIds,
       getPeerCount(){
-        const peers=room.getPeers();
-        return peers instanceof Map?peers.size:Object.keys(peers||{}).length;
+        return getPeerIds().length;
       },
       leave(){
         try{
