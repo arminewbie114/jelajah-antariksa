@@ -493,7 +493,7 @@ function addRocketLights(){
 }
 
 const shipGroup = new THREE.Group(); scene.add(shipGroup);
-const SHIP_SCALE=0.12; // sedikit lebih besar dari Bulan: panjang ~1,3 unit (⌀ Bulan render 1,1)
+const SHIP_SCALE=0.15; // lebih besar dari Bulan: panjang ~1,7 unit (⌀ Bulan render 1,1)
 let rocketMesh = builders['nsx-vanguard'](); shipGroup.add(rocketMesh);
 // posisi roket relatif kamera: hidung ke -Z (maju)
 // Roket dibaringkan: moncong (+Y lokal) → depan kapal (-Z). Karena itu
