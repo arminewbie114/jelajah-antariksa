@@ -1,40 +1,48 @@
-<<<<<<< HEAD
-# jelajah-antariksa
-=======
 # 🚀 Nusantara Space Explorer
 
-Web penjelajah antariksa 3D FPS berbahasa Indonesia — terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora) ke 8 planet + Bulan + Pluto + 3 eksoplanet nyata + lubang hitam Cygnus X-1.
+Web penjelajah antariksa 3D FPS berbahasa Indonesia. Terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora) ke **8 planet + Bulan + Pluto + 3 eksoplanet nyata**, lalu jelajahi **Bima Sakti** (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan **5 galaksi lain** (Andromeda, Triangulum, LMC, Whirlpool, Sombrero).
 
-## Cara menjalankan (2 pilihan)
+## Cara menjalankan
 
-**Paling mudah (Windows):**
-1. Buka folder ini, double-klik `index.html` — bisa jalan, tapi mode module + CDN butuh internet.
-2. Disarankan: klik kanan folder → *Open with VS Code* → extension *Live Server* → *Go Live*.
+**Paling mudah (Windows):** buka folder ini lalu double-klik `index.html` — butuh internet untuk CDN Three.js.
 
-**Via Python (disarankan agar module aman):**
+**Via server lokal (disarankan):**
 ```powershell
 cd "$env:USERPROFILE\Desktop\nusantara-space-explorer"
 python -m http.server 8080
 # buka http://localhost:8080
 ```
+Atau pakai ekstensi *Live Server* di VS Code.
 
 ## Kontrol
-- Desktop: WASD + Mouse (klik canvas untuk kunci mouse), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info, M peta+autopilot, R bensin, 1/2/3 ganti pesawat.
-- Mobile: stik kiri = maju/mundur/strafe, stik kanan = arahkan atas/bawah/kiri/kanan.
-- HP: joystick kiri + geser kanan untuk lihat + tombol ▲ 🌌 ℹ️ 🪟.
+- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info (toggle), M peta + autopilot, R isi bensin, 1/2/3 ganti pesawat.
+- **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan).
+- **Autopilot:** pilih tujuan di peta (M). Kapal otomatis mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk membuka info; gerakkan mouse/WASD untuk batal.
 
-## Akurasi data (NASA Planetary Fact Sheet)
-Diameter, jarak AU, periode orbit, suhu, gravitasi akurat. Skala render dikompresi (jarak 1:4000, diameter log) + warp drive agar playable — dijelaskan di panel info & help. Tekstur prosedural Canvas meniru warna asli NASA (tanpa download 500MB).
+## Yang bisa dijelajahi
+- Tata Surya: Merkurius–Neptunus, Pluto, Bulan, Matahari, Cygnus X-1.
+- Eksoplanet: Proxima Centauri b, TRAPPIST-1e, Kepler-452b.
+- Bima Sakti: bintang, gugus, nebula, dan lubang hitam supermasif Sgr A*.
+- Galaksi lain: Andromeda, Triangulum, Awan Magellan Besar, Whirlpool, Sombrero.
+
+## Akurasi data
+Diameter, jarak AU, periode orbit, suhu, dan gravitasi planet mengacu NASA Planetary Fact Sheet. Data bintang/galaksi memakai jarak dan ukuran astronomis nyata (tahun cahaya). Skala render dikompresi agar playable: jarak tata surya 1:4000, diameter log, posisi galaksi didekatkan; nilai asli selalu tercantum di panel info.
 
 ## Teknologi
-- Three.js 0.160 via CDN (importmap), tanpa build — siap hosting statis (Vercel/Netlify/GitHub Pages).
-- Upgrade ke Vite: `npm create vite@latest` lalu pindahkan `js/` ke `src/` dan `npm i three`.
+- Three.js 0.160 via CDN + importmap, tanpa build tool — siap hosting statis (Vercel/Netlify/GitHub Pages).
+- Tekstur prosedural Canvas (planet, galaksi, nebula) tanpa aset unduhan besar.
+- Audio WebAudio, minimap 2D, kontrol sentuh dua stik.
 
 ## Struktur
 ```
-index.html  — splash, HUD, panel info, peta, kontrol mobile
-css/style.css
-js/dataPlanets.js — data akurat NASA (sumber kebenaran)
-js/main.js — scene, orbit, pesawat bersayap, FPS controls, autopilot, minimap, audio
+index.html       — splash, HUD, panel info, peta, kontrol mobile
+css/style.css    — tema UI
+js/dataPlanets.js — data NASA + Bima Sakti + galaksi (sumber kebenaran)
+js/main.js       — scene, orbit, pesawat, FPS/touch, autopilot, minimap, audio
 ```
->>>>>>> 5bc37e8 (Nusantara Space Explorer — siap GitHub Pages)
+
+## Verifikasi cepat
+```bash
+python3 -m http.server 8080 --bind 0.0.0.0
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/index.html
+```

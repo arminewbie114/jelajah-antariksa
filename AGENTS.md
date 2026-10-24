@@ -15,7 +15,7 @@
 ## Ringkasan proyek
 Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + importmap, tanpa build tool).
 - `index.html` — splash, HUD, panel info, peta, kontrol mobile.
-- `js/dataPlanets.js` — data NASA planet, eksoplanet, pesawat NSX, lubang hitam.
+- `js/dataPlanets.js` — data NASA planet, eksoplanet, Bima Sakti (MILKYWAY), galaksi lain (GALAXIES), pesawat NSX.
 - `js/main.js` — scene, orbit, pesawat bersayap, kontrol FPS/touch, autopilot, minimap, audio.
 - `css/style.css` — styling.
 
@@ -32,3 +32,5 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Mobile: dua stik analog — kiri gerak (atas maju, bawah mundur, kiri/kanan strafe), kanan mengarahkan (atas/bawah pitch, kiri/kanan yaw).
 - Autopilot/ikuti: tanpa batas kecepatan maksimum, warp waktu dikunci 1×, parkir di sisi siang planet, tombol `E` toggle panel.
 - Eksoplanet: periode orbit asli di data, visual orbit diperlambat 15× (`lambat:15`).
+- Objek Bima Sakti & galaksi: posisi statis (`fixed:true`), punya `nearRadius`, `hoverRadius`, `arriveRadius`, dan `info`; autopilot parkir di `hoverRadius`, batas dunia 2000 unit.
+- Daftar autopilot dikelompokkan: Tata Surya / Eksoplanet / Bima Sakti / Galaksi Lain.
