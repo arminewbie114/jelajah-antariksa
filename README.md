@@ -15,9 +15,16 @@ python -m http.server 8080
 Atau pakai ekstensi *Live Server* di VS Code.
 
 ## Kontrol
-- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info (toggle), M peta + autopilot, R isi bensin, 1/2/3 ganti pesawat.
-- **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan).
+- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info (toggle), M peta + autopilot, R isi bensin, 1/2/3 ganti pesawat.
+- **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan), tombol **⚡** = tembak laser (tahan untuk tembak otomatis).
 - **Autopilot:** pilih tujuan di peta (M). Kapal otomatis mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk membuka info; gerakkan mouse/WASD untuk batal.
+
+## Laser & penghancuran
+- Laser menembak lurus mengikuti crosshair, tanpa amunisi (cooldown ±0,17 dtk).
+- **Asteroid hancur dalam 1 tembakan** dan terurai menjadi pecahan.
+- **Planet/bulan** butuh beberapa tembakan; **objek raksasa** (Matahari, bintang, nebula, galaksi, lubang hitam) butuh puluhan–ratusan tembakan.
+- Setiap objek punya HP di `js/dataPlanets.js`; HP target tampil di bawah crosshair dan di panel info.
+- Semua objek yang hancur **kembali otomatis setelah 60 detik** (asteroid tidak respawn). Autopilot otomatis batal bila target hancur.
 
 ## Yang bisa dijelajahi
 - Tata Surya: Merkurius–Neptunus, Pluto, Bulan, Matahari, Cygnus X-1.

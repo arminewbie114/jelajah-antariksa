@@ -198,18 +198,32 @@ bodies.push(bhBody);
   sp.position.set(x,y,z); sp.scale.set(s,s,1); scene.add(sp);
 });
 
-/* Sabuk asteroid Mars–Jupiter (InstancedMesh 3000) */
-{
-  const geo=new THREE.DodecahedronGeometry(0.22);
+/* Sabuk asteroid Mars–Jupiter (InstancedMesh 3000) — bisa ditembak & dihancurkan */
+const asteroidField=(()=>{
+  const COUNT=3000, geo=new THREE.DodecahedronGeometry(0.22);
   const mat=new THREE.MeshStandardMaterial({color:0x8a7f70,roughness:1});
-  const inst=new THREE.InstancedMesh(geo,mat,3000);
-  const d=new THREE.Object3D();
-  for(let i=0;i<3000;i++){ const a=Math.random()*Math.PI*2, r=78+Math.random()*10;
-    d.position.set(Math.cos(a)*r,(Math.random()-0.5)*3,Math.sin(a)*r);
-    d.rotation.set(Math.random()*3,Math.random()*3,0);
-    const s=0.4+Math.random()*1.4; d.scale.set(s,s,s); d.updateMatrix(); inst.setMatrixAt(i,d.matrix); }
-  scene.add(inst);
-}
+  const mesh=new THREE.InstancedMesh(geo,mat,COUNT);
+  const dummy=new THREE.Object3D();
+  const pos=new Float32Array(COUNT*3), rot=new Float32Array(COUNT*3), scale=new Float32Array(COUNT), alive=new Uint8Array(COUNT);
+  for(let i=0;i<COUNT;i++){
+    const a=Math.random()*Math.PI*2, r=78+Math.random()*10, s=0.4+Math.random()*1.4;
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=(Math.random()-0.5)*3; pos[i*3+2]=Math.sin(a)*r;
+    rot[i*3]=Math.random()*3; rot[i*3+1]=Math.random()*3; rot[i*3+2]=0;
+    scale[i]=s; alive[i]=1;
+    dummy.position.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
+    dummy.rotation.set(rot[i*3],rot[i*3+1],rot[i*3+2]);
+    dummy.scale.set(s,s,s); dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate=true; scene.add(mesh);
+  const hide=i=>{ // hancur: matrix diskalakan 0 supaya tidak digambar
+    alive[i]=0;
+    dummy.position.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
+    dummy.rotation.set(rot[i*3],rot[i*3+1],rot[i*3+2]);
+    dummy.scale.setScalar(0); dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
+    mesh.instanceMatrix.needsUpdate=true;
+  };
+  return {COUNT,mesh,pos,rot,scale,alive,hide};
+})();
 
 /* ============ BIMA SAKTI & GALAKSI LAIN ============ */
 function galaxyTexture(kind, palette){
@@ -510,7 +524,7 @@ shipGroup.add(camera);
 /* ============ STATE + KONTROL FPS ============ */
 const S = { playing:false, cockpit:true, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
   boost:false, warpDrive:false, timeWarp:1, target:null, follow:null, visited:new Set(), rocketId:'nsx-vanguard',
-  sound:true, paused:false, nearBody:null };
+  sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null };
 const keys={};
 addEventListener('keydown',e=>{
   keys[e.code]=true;
@@ -524,6 +538,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Digit1') setRocket('nsx-vanguard');
   if(e.code==='Digit2') setRocket('nsx-odyssey');
   if(e.code==='Digit3') setRocket('nsx-aurora');
+  if(e.code==='KeyF') S.firing=true;
   if(['Space','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -627,7 +642,7 @@ function toggleMap(){ $('map-panel').classList.toggle('hidden'); }
 $('btn-map').onclick=toggleMap; $('map-close').onclick=toggleMap;
 $('btn-help').onclick=()=>$('help-modal').classList.remove('hidden');
 $('help-close').onclick=()=>$('help-modal').classList.add('hidden');
-$('btn-pause').onclick=()=>{S.paused=!S.paused;toast(S.paused?'⏸️ Jeda — klik ▶ untuk lanjut':'▶ Lanjut');$('btn-pause').textContent=S.paused?'▶':'⏸️';};
+$('btn-pause').onclick=()=>{S.paused=!S.paused;if(S.paused){S.firing=false;S.aimTarget=null;updateAimHud(null);}toast(S.paused?'⏸️ Jeda — klik ▶ untuk lanjut':'▶ Lanjut');$('btn-pause').textContent=S.paused?'▶':'⏸️';};
 $('btn-sound').onclick=e=>{S.sound=!S.sound;e.target.textContent=S.sound?'🔊':'🔇';if(engGain)engGain.gain.value=0;};
 $('panel-close').onclick=closePanel;
 $('pp-refuel').onclick=refuel;
@@ -655,18 +670,23 @@ function renderPlanetList(){
     if(!arr.length)return;
     const h=document.createElement('h4'); h.className='planet-group'; h.textContent=heads[gi]; el.appendChild(h);
     arr.forEach(b=>{
+      const dead=b.entity?.destroyed;
       const emo=b.data.emoji||(b.isBlackHole?'🕳️':'🪐');
-      const badge=S.visited.has(b.data.id)?'✅':emo;
+      const badge=dead?'💥':(S.visited.has(b.data.id)?'✅':emo);
       const btn=document.createElement('button');
-      btn.textContent=`${badge} ${b.data.name} — ${b.data.jarakAU?b.data.jarakAU+' AU':(b.data.jarakLy||b.data.type)}`;
+      btn.textContent=dead?`${badge} ${b.data.name} — hancur (respawn 60 dtk)`
+        :`${badge} ${b.data.name} — ${b.data.jarakAU?b.data.jarakAU+' AU':(b.data.jarakLy||b.data.type)}`;
       if(S.target===b)btn.classList.add('target');
       if(S.visited.has(b.data.id))btn.classList.add('visited');
-      btn.onclick=()=>flyTo(b.data.id); el.appendChild(btn);
+      if(dead)btn.disabled=true;
+      else btn.onclick=()=>flyTo(b.data.id);
+      el.appendChild(btn);
     });
   });
 }
 function flyTo(id){
   const b=bodies.find(x=>x.data.id===id); if(!b)return;
+  if(b.entity?.destroyed){ toast('💥 Target hancur — tunggu respawn 60 detik'); return; }
   S.follow=null; S.target=b;
   // Kunci warp waktu ke 1x selama autopilot: planet super-cepat (Proxima:
   // 1 putaran ≈ 4 dtk) mustahil direndezvous saat time-warp besar.
@@ -679,6 +699,10 @@ function toggleMapIfOpen(){ if(!$('map-panel').classList.contains('hidden'))$('m
 
 function bodyInfoHTML(d){
   const cells=[];
+  if(d.hp){
+    const e=entityByDataId.get(d.id);
+    cells.push(['❤️ Kesehatan',e?`${e.hp} / ${e.maxHp}`:`${d.hp} / ${d.hp}`]);
+  }
   if(d.diameterKm)cells.push(['⌀ Diameter',d.diameterKm.toLocaleString('id-ID')+' km']);
   else if(d.diameterLy)cells.push(['⌀ Diameter',d.diameterLy]);
   else if(d.massa)cells.push(['⚖️ Massa',d.massa]);
@@ -698,7 +722,8 @@ function openPanel(d){
 }
 function closePanel(){ $('planet-panel').classList.add('hidden'); S.panelKey=null; }
 function showNearestInfo(){
-  const d=S.nearBody?S.nearBody.data:(shipGroup.position.length()<30?SUN:null);
+  const nearSun=shipGroup.position.length()<30&&!sunEntity.destroyed;
+  const d=S.nearBody?S.nearBody.data:(nearSun?SUN:null);
   if(!d){ toast('Belum dekat objek langit — terbang lebih dekat atau pakai autopilot (M)'); return; }
   const key=d.id||d.name, panel=$('planet-panel');
   // Tekan E sekali → buka, tekan lagi (planet sama) → tutup
@@ -706,6 +731,259 @@ function showNearestInfo(){
   else openPanel(d);
 }
 $('scene').addEventListener('dblclick',showNearestInfo);
+
+/* ============ ENTITAS LANGIT, LASER & SISTEM KERUSAKAN ============ */
+const entities=[], entityByDataId=new Map();
+function registerEntity(ent){ entities.push(ent); if(ent.data.id)entityByDataId.set(ent.data.id,ent); return ent; }
+for(const b of bodies){
+  const d=b.data;
+  let hitRadius=(d.renderRadius||1)*1.1+0.15;
+  if(b.fixed){
+    const sc=Array.isArray(d.scale)?Math.max(d.scale[0],d.scale[1]):(d.scale||10);
+    hitRadius=d.visual==='blackhole'?Math.max((d.renderRadius||4)*2.5,10):Math.max(sc*0.5,10);
+  } else if(b.isBlackHole){
+    hitRadius=Math.max((d.renderRadius||4)*2.2,10);
+  }
+  const ent={kind:'body',body:b,data:d,mesh:b.mesh,name:d.name,hitRadius,
+    hp:d.hp||1,maxHp:d.hp||1,isBig:!!b.fixed||!!b.isBlackHole,
+    destroyed:false,respawnAt:0,
+    color:Array.isArray(d.warnaBase)?d.warnaBase[0]:(Array.isArray(d.palette)?d.palette[0]:(d.warna||'#cbd5e1'))};
+  b.entity=ent; registerEntity(ent);
+}
+const moonEntity=registerEntity({kind:'moon',body:null,parent:earth,data:BONUS[0],mesh:moonMesh,name:'Bulan',hitRadius:0.8,
+  hp:BONUS[0].hp,maxHp:BONUS[0].hp,isBig:false,destroyed:false,respawnAt:0,color:'#c9c9c9'});
+const sunEntity=registerEntity({kind:'sun',body:null,data:SUN,mesh:sunMesh,name:'Matahari',hitRadius:12,
+  hp:SUN.hp,maxHp:SUN.hp,isBig:true,destroyed:false,respawnAt:0,color:'#ffcc55'});
+
+const LASER_RANGE=700, LASER_CD=0.17, RESPAWN_MS=60000;
+const _camPos=new THREE.Vector3(), _camDir=new THREE.Vector3(), _shotEnd=new THREE.Vector3();
+const _shipPos=new THREE.Vector3(), _camQ=new THREE.Quaternion(), _gunR=new THREE.Vector3(), _gunU=new THREE.Vector3();
+
+function raySphere(ox,oy,oz,dx,dy,dz,cx,cy,cz,r){
+  const lx=ox-cx,ly=oy-cy,lz=oz-cz;
+  const b=lx*dx+ly*dy+lz*dz, c=lx*lx+ly*ly+lz*lz-r*r, disc=b*b-c;
+  if(disc<0)return -1;
+  const t=-b-Math.sqrt(disc);
+  if(t>0)return t;
+  const t2=-b+Math.sqrt(disc);
+  return t2>0?t2:-1;
+}
+
+function findAimTarget(){
+  camera.getWorldPosition(_camPos); camera.getWorldDirection(_camDir);
+  let best=null, bestT=LASER_RANGE;
+  for(const e of entities){
+    if(e.destroyed)continue;
+    const p=e.mesh.position;
+    const t=raySphere(_camPos.x,_camPos.y,_camPos.z,_camDir.x,_camDir.y,_camDir.z,p.x,p.y,p.z,e.hitRadius);
+    if(t>0&&t<bestT){
+      bestT=t; best={kind:'entity',ent:e,t,point:new THREE.Vector3().copy(_camPos).addScaledVector(_camDir,t)};
+    }
+  }
+  // asteroid: bantuan bidik halus (batu sangat kecil) maksimal 220 unit
+  const aRange=Math.min(220,bestT);
+  const A=asteroidField;
+  for(let i=0;i<A.COUNT;i++){
+    if(!A.alive[i])continue;
+    const cx=A.pos[i*3],cy=A.pos[i*3+1],cz=A.pos[i*3+2];
+    const lx=_camPos.x-cx,ly=_camPos.y-cy,lz=_camPos.z-cz;
+    const t=-(lx*_camDir.x+ly*_camDir.y+lz*_camDir.z);
+    if(t<0.5||t>aRange)continue;
+    const px=lx+_camDir.x*t, py=ly+_camDir.y*t, pz=lz+_camDir.z*t;
+    const rr=Math.max(0.45,0.22*A.scale[i]*2.1);
+    if(px*px+py*py+pz*pz<=rr*rr){
+      bestT=t; best={kind:'asteroid',index:i,t,point:new THREE.Vector3(_camPos.x+_camDir.x*t,_camPos.y+_camDir.y*t,_camPos.z+_camDir.z*t)};
+    }
+  }
+  return best;
+}
+
+const aimHud=$('aim-hud');
+function updateAimHud(hit){
+  if(!hit){ aimHud.classList.add('hidden'); $('crosshair').classList.remove('locked'); return; }
+  aimHud.classList.remove('hidden'); $('crosshair').classList.add('locked');
+  if(hit.kind==='asteroid'){
+    $('aim-name').textContent='🪨 Asteroid';
+    $('aim-fill').style.width='100%';
+    $('aim-hp').textContent='HP 1 / 1';
+  } else {
+    const e=hit.ent;
+    $('aim-name').textContent=`${e.data.emoji||(e.kind==='sun'?'☀️':'🪐')} ${e.name}`;
+    const pct=Math.max(0,e.hp/e.maxHp*100);
+    $('aim-fill').style.width=pct+'%';
+    $('aim-hp').textContent=`HP ${e.hp} / ${e.maxHp}`;
+  }
+}
+function flashCrosshair(){ const c=$('crosshair'); c.classList.add('hit'); clearTimeout(c._h); c._h=setTimeout(()=>c.classList.remove('hit'),120); }
+
+/* --- suara laser & ledakan (WebAudio, ikut toggle) --- */
+let _lastBoom=0;
+function sfxLaser(){
+  if(!S.sound||!AC)return;
+  const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+  o.type='square'; o.frequency.setValueAtTime(1300,t); o.frequency.exponentialRampToValueAtTime(220,t+0.09);
+  g.gain.setValueAtTime(0.07,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t+0.11);
+}
+function sfxExplosion(big=false){
+  if(!S.sound||!AC)return;
+  const now=performance.now(); if(now-_lastBoom<70)return; _lastBoom=now;
+  const dur=big?0.9:0.3, sr=AC.sampleRate, buf=AC.createBuffer(1,Math.floor(sr*dur),sr), d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,big?2:3);
+  const src=AC.createBufferSource(); src.buffer=buf;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=big?240:650;
+  const g=AC.createGain(); g.gain.value=big?0.45:0.2;
+  src.connect(f).connect(g).connect(AC.destination); src.start();
+}
+
+/* --- efek visual: beam, flash, pecahan --- */
+const beams=[];
+for(let i=0;i<18;i++){
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+  const line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x66eaff,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+  line.frustumCulled=false; line.visible=false; scene.add(line); beams.push({line,life:0});
+}
+let _beamI=0;
+function addBeam(from,to,color=0x66eaff){
+  const b=beams[_beamI++%beams.length], a=b.line.geometry.attributes.position;
+  a.setXYZ(0,from.x,from.y,from.z); a.setXYZ(1,to.x,to.y,to.z); a.needsUpdate=true;
+  b.line.material.color.set(color); b.line.material.opacity=0.95; b.line.visible=true; b.life=0.1;
+}
+const flashes=[];
+function addFlash(pos,color,size,life=0.22){
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(color),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0.95}));
+  sp.position.copy(pos); sp.scale.set(size,size,1); scene.add(sp);
+  flashes.push({sp,life,max:life,size});
+}
+const debris=[], debrisGeo=new THREE.TetrahedronGeometry(1,0);
+function entityColors(e){
+  if(Array.isArray(e.data.warnaBase))return e.data.warnaBase;
+  if(Array.isArray(e.data.palette))return e.data.palette;
+  if(e.data.warna)return [e.data.warna,'#ffffff'];
+  return [e.color||'#cbd5e1','#8899aa'];
+}
+function spawnDebris(pos,colors,count,power,sizeBase){
+  for(let i=0;i<count;i++){
+    const col=colors[Math.floor(Math.random()*colors.length)];
+    const m=new THREE.Mesh(debrisGeo,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:1}));
+    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*sizeBase*4,(Math.random()-0.5)*sizeBase*4,(Math.random()-0.5)*sizeBase*4));
+    m.scale.setScalar(sizeBase*(0.5+Math.random()*1.2)); scene.add(m);
+    const vel=new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar(power*(0.5+Math.random()));
+    debris.push({mesh:m,vel,spin:new THREE.Vector3(Math.random()*4,Math.random()*4,Math.random()*4),life:1.3+Math.random()*0.9,max:2.2});
+  }
+  while(debris.length>260){ const d=debris.shift(); scene.remove(d.mesh); d.mesh.material.dispose(); }
+}
+
+function destroyAsteroid(i,point){
+  asteroidField.hide(i);
+  addFlash(point,'#ffcf8a',1.5,0.28);
+  spawnDebris(point,['#8a7f70','#b3a795','#5c5448'],8,5,0.16);
+  sfxExplosion(false); flashCrosshair();
+}
+
+function destroyEntity(ent,point){
+  ent.destroyed=true; ent.hp=0; ent.respawnAt=performance.now()+RESPAWN_MS;
+  if(ent.kind==='sun'){ sunMesh.visible=false; glow.visible=false; sunLight.intensity=0; }
+  else ent.mesh.visible=false;
+  if(ent.body?.moons)for(const m of ent.body.moons)m.mesh.visible=false;
+  const pos=point?point.clone():ent.mesh.position.clone();
+  addFlash(pos,ent.kind==='sun'?'#ffdd66':(ent.data.warna||ent.color||'#ffcc88'),Math.max(2.5,ent.hitRadius*0.55),0.75);
+  spawnDebris(pos,entityColors(ent),ent.isBig?34:22,ent.isBig?13:8,Math.max(0.14,ent.hitRadius*0.085));
+  sfxExplosion(true); flashCrosshair();
+  if(S.target===ent.body){ S.target=null; restoreWarp(); $('hud-target').textContent='🎯 —'; }
+  if(S.follow===ent.body)S.follow=null;
+  if(S.nearBody&&S.nearBody.data.id===ent.data.id)S.nearBody=null;
+  if(S.panelKey===ent.data.id)closePanel();
+  S.aimTarget=null; updateAimHud(null);
+  toast(`${ent.kind==='sun'?'☀️ Matahari':(ent.data.emoji||'💥')+' '+ent.name} hancur! Respawn 60 dtk.`,3600);
+  renderPlanetList();
+}
+
+function respawnEntity(ent){
+  ent.destroyed=false; ent.hp=ent.maxHp; ent.respawnAt=0;
+  if(ent.kind==='sun'){ sunMesh.visible=true; glow.visible=true; sunLight.intensity=2.2; }
+  else if(ent.kind==='moon')ent.mesh.visible=!ent.parent?.entity?.destroyed;
+  else ent.mesh.visible=true;
+  if(ent.body?.moons)for(const m of ent.body.moons){
+    if(m.mesh===moonMesh && moonEntity.destroyed)continue;
+    m.mesh.visible=true;
+  }
+  const p=ent.mesh.position;
+  if(shipGroup.position.distanceTo(p)<ent.hitRadius+2){
+    _shotEnd.copy(shipGroup.position).sub(p); if(_shotEnd.lengthSq()<1e-6)_shotEnd.set(0,0,1);
+    shipGroup.position.copy(p).addScaledVector(_shotEnd.normalize(),ent.hitRadius+6);
+  }
+  addFlash(p,'#aef6ff',Math.max(3,ent.hitRadius*0.6),0.5);
+  toast(`♻️ ${ent.name} kembali!`,2200); renderPlanetList();
+}
+
+function fireLaser(){
+  if(!S.playing||S.paused||S.laserCd>0)return;
+  S.laserCd=LASER_CD;
+  const hit=findAimTarget();
+  camera.getWorldPosition(_camPos); camera.getWorldDirection(_camDir);
+  _shotEnd.copy(_camPos).addScaledVector(_camDir,LASER_RANGE);
+  if(hit)_shotEnd.copy(hit.point);
+  shipGroup.getWorldPosition(_shipPos); camera.getWorldQuaternion(_camQ);
+  _gunR.set(1,0,0).applyQuaternion(_camQ); _gunU.set(0,1,0).applyQuaternion(_camQ);
+  const muzzle=_shipPos.clone().addScaledVector(_camDir,1.8);
+  const left=muzzle.clone().addScaledVector(_gunR,0.55).addScaledVector(_gunU,-0.12);
+  const rightGun=muzzle.clone().addScaledVector(_gunR,-0.55).addScaledVector(_gunU,-0.12);
+  addBeam(left,_shotEnd); addBeam(rightGun,_shotEnd);
+  addFlash(left,'#aef6ff',0.55,0.08); addFlash(rightGun,'#aef6ff',0.55,0.08);
+  sfxLaser();
+  if(!hit)return;
+  addFlash(_shotEnd,'#ffd7a0',hit.kind==='asteroid'?0.9:Math.min(5,1.8+(hit.ent?hit.ent.hitRadius*0.05:0)),0.22);
+  if(hit.kind==='asteroid'){ destroyAsteroid(hit.index,_shotEnd); return; }
+  const e=hit.ent;
+  e.hp=Math.max(0,e.hp-1); flashCrosshair(); updateAimHud(hit);
+  if(e.hp<=0)destroyEntity(e,_shotEnd);
+  else spawnDebris(_shotEnd,entityColors(e),3,4,0.08);
+}
+
+function updateCombat(dt){
+  S.laserCd=Math.max(0,S.laserCd-dt);
+  S.aimScanT-=dt;
+  if(S.aimScanT<=0){ S.aimScanT=0.1; S.aimTarget=findAimTarget(); updateAimHud(S.aimTarget); }
+  if(S.firing&&S.laserCd<=0)fireLaser();
+}
+
+function updateEffects(dt){
+  for(const b of beams){ if(b.life>0){ b.life-=dt; if(b.life<=0)b.line.visible=false; else b.line.material.opacity=b.life*9.5; } }
+  for(let i=flashes.length-1;i>=0;i--){
+    const f=flashes[i]; f.life-=dt;
+    if(f.life<=0){ scene.remove(f.sp); f.sp.material.dispose(); flashes.splice(i,1); continue; }
+    const k=1-f.life/f.max; f.sp.material.opacity=Math.max(0,f.life/f.max); f.sp.scale.setScalar(f.size*(1+k*1.6));
+  }
+  for(let i=debris.length-1;i>=0;i--){
+    const d=debris[i]; d.life-=dt;
+    if(d.life<=0){ scene.remove(d.mesh); d.mesh.material.dispose(); debris.splice(i,1); continue; }
+    d.mesh.position.addScaledVector(d.vel,dt); d.vel.multiplyScalar(0.985);
+    d.mesh.rotation.x+=d.spin.x*dt; d.mesh.rotation.y+=d.spin.y*dt; d.mesh.rotation.z+=d.spin.z*dt;
+    d.mesh.material.opacity=Math.max(0,d.life/d.max); d.mesh.scale.multiplyScalar(1-dt*0.16);
+  }
+  const now=performance.now();
+  for(const e of entities)if(e.destroyed&&now>=e.respawnAt)respawnEntity(e);
+}
+
+// input laser
+addEventListener('keyup',e=>{ if(e.code==='KeyF')S.firing=false; });
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===0&&document.pointerLockElement===canvas&&S.playing&&!S.paused)S.firing=true;
+});
+addEventListener('mouseup',e=>{ if(e.button===0)S.firing=false; });
+addEventListener('blur',()=>{ S.firing=false; });
+{
+  const mf=$('m-fire');
+  if(mf){
+    const start=e=>{ e.preventDefault(); if(S.playing&&!S.paused)S.firing=true; };
+    const stop=e=>{ e.preventDefault(); S.firing=false; };
+    mf.addEventListener('pointerdown',start); mf.addEventListener('pointerup',stop);
+    mf.addEventListener('pointercancel',stop); mf.addEventListener('pointerleave',stop);
+  }
+}
+
 
 /* ============ MINIMAP ============ */
 const mm=$('minimap').getContext('2d');
@@ -715,7 +993,7 @@ function drawMap(){
   const sc=126/MAP_R, cx=130, cy=130;
   mm.fillStyle='#ffcc44'; mm.beginPath(); mm.arc(cx,cy,6,0,7); mm.fill();
   for(const b of bodies){
-    if(!b.data.orbitRadius)continue;
+    if(!b.data.orbitRadius||b.entity?.destroyed)continue;
     mm.strokeStyle=b.isBlackHole?'rgba(200,60,80,.5)':'rgba(80,140,220,.3)'; mm.beginPath(); mm.arc(cx,cy,b.data.orbitRadius*sc,0,7); mm.stroke();
     const bx=cx+b.mesh.position.x*sc, bz=cy+b.mesh.position.z*sc;
     mm.fillStyle=b.isBlackHole?'#ff3355':(S.visited.has(b.data.id)?'#22c55e':(S.target===b?'#38e1ff':'#fff'));
@@ -757,13 +1035,14 @@ function animate(){
   // orbit planet (timeWarp mempercepat revolusi edukatif)
   const t=dt*S.timeWarp;
   for(const b of bodies){
-    if(b.fixed){ if(b.tick)b.tick(dt); continue; } // objek statis: bima sakti & galaksi lain
+    if(b.fixed){ if(!b.entity?.destroyed&&b.tick)b.tick(dt); continue; } // objek statis: bima sakti & galaksi lain
     b.angle+=b.speed*t; b.mesh.position.set(Math.cos(b.angle)*b.data.orbitRadius,0,Math.sin(b.angle)*b.data.orbitRadius);
     b.mesh.rotation.y+=b.spin*dt*S.timeWarp;
     for(const m of b.moons){ m.angle+=m.speed*t; m.mesh.position.set(b.mesh.position.x+Math.cos(m.angle)*m.dist,0.5,b.mesh.position.z+Math.sin(m.angle)*m.dist); }
   }
   sunMesh.rotation.y+=dt*0.02;
   bhDisk.rotation.z+=dt*0.5; photon.rotation.z-=dt*0.25; // cakram akresi berputar
+  updateEffects(dt);
 
   if(S.playing && !S.paused){
     // stik kanan: arahkan kapal (analog, kecepatan putar halus)
@@ -907,7 +1186,7 @@ function animate(){
     if(shipGroup.position.length()<16){ shipGroup.position.setLength(16); S.vel.multiplyScalar(0.2); toast('☀️ Terlalu panas! Menjauhlah dari Matahari.'); }
     // GRAVITASI LUBANG HITAM: menarik pesawat dalam radius 80, horizon di ~8
     // (dinonaktifkan saat mode ikuti BH: thruster penstabil otomatis mengimbangi)
-    if(!(S.follow&&S.follow.isBlackHole)){
+    if(!(S.follow&&S.follow.isBlackHole)&&!bhBody.entity?.destroyed){
     {
       tmp.copy(bhBody.mesh.position).sub(shipGroup.position);
       const dBH=tmp.length();
@@ -930,13 +1209,14 @@ function animate(){
     let best=null,bestScore=1;
     const consider=(b,dist)=>{
       if(!b||!b.data)return;
+      if(b.entity?.destroyed)return;
       const nr=b.data.nearRadius||((b.data.renderRadius||0)*4+6);
       const score=dist/nr;
       if(score<bestScore){bestScore=score;best=b;}
     };
     for(const b of bodies)consider(b,shipGroup.position.distanceTo(b.mesh.position));
     // bulan juga bisa diinfo
-    consider({data:BONUS[0],mesh:moonMesh},shipGroup.position.distanceTo(moonMesh.position));
+    if(!moonEntity.destroyed&&moonMesh.visible)consider({data:BONUS[0],mesh:moonMesh},shipGroup.position.distanceTo(moonMesh.position));
     S.nearBody=best;
     if(S.nearBody && !S.target){
       $('prompt-info').style.display='block';
@@ -949,6 +1229,8 @@ function animate(){
         } else toast(`✅ Terkunjungi: ${S.nearBody.data.name} — ${S.nearBody.data.type||'objek langit dalam'}`);
       }
     } else $('prompt-info').style.display='none';
+
+    updateCombat(dt);
 
     // HUD — kecepatan dunia dinormalisasi: warp penuh (650) = 4000 km/dtk MAKS
     const kmh=S.vel.length();

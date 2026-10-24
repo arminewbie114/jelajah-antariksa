@@ -43,11 +43,16 @@
     <button id="btn-boost" title="Boost (Shift)">⚡ BOOST</button>
     <button id="btn-warpdrive" title="Warp Drive (J)">🌌 WARP</button>
   </div>
-  <div id="ctrl-hint">WASD gerak · Mouse lihat · <b>C</b> kokpit · <b>E</b> info · <b>M</b> peta · <b>R</b> isi bensin</div>
+  <div id="ctrl-hint">WASD gerak · Mouse lihat · <b>F/Klik</b> laser · <b>C</b> kokpit · <b>E</b> info · <b>M</b> peta · <b>R</b> bensin</div>
 </footer>
 
 <!-- Crosshair FPS -->
 <div id="crosshair">+</div>
+<div id="aim-hud" class="hidden">
+  <span id="aim-name">Target</span>
+  <div id="aim-bar"><div id="aim-fill"></div></div>
+  <small id="aim-hp">HP 0 / 0</small>
+</div>
 <div id="toast"></div>
 <div id="prompt-info">Tekan <b>E</b> untuk info planet</div>
 
@@ -97,6 +102,7 @@
     <button id="m-info">ℹ️</button>
     <button id="m-cockpit">🪟</button>
   </div>
+  <button id="m-fire" title="Tembak laser">⚡</button>
 </div>
 
 <!-- Layar pembuka -->
@@ -113,7 +119,7 @@
       <button data-mode="freefly">🎥 Free-Fly FPS</button>
     </div>
     <button id="btn-launch">🛫 LEPAS LANDAS</button>
-    <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse) · HP: stik kiri = gerak (maju/mundur/strafe), stik kanan = arahkan (atas/bawah/kiri/kanan).<br/>Klik planet / dekati planet untuk panel info Indonesia.</p>
+    <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse), <b>F/Klik kiri</b> = laser · HP: stik kiri = gerak, stik kanan = arahkan, tombol <b>⚡</b> = tembak.<br/>Klik planet / dekati planet untuk panel info Indonesia.</p>
   </div>
 </div>
 
@@ -124,6 +130,7 @@
       <li><b>WASD</b> maju/mundur/strafe, <b>Spasi/Ctrl</b> naik/turun, <b>Shift</b> boost, <b>J</b> warp drive.</li>
       <li><b>Mouse</b>: klik canvas untuk Pointer Lock, gerakkan untuk melihat. <b>HP</b>: stik kiri gerak, stik kanan arahkan.</li>
       <li><b>C</b>: ganti kokpit / free-fly · <b>E</b>: info planet terdekat · <b>M</b>: peta & autopilot · <b>R</b>: isi BBM · <b>1/2/3</b>: ganti pesawat.</li>
+      <li><b>F / klik kiri</b> (HP: tombol <b>⚡</b>): tembak laser. Asteroid hancur 1 tembakan; planet butuh beberapa, objek raksasa butuh puluhan–ratusan. Semua yang hancur kembali setelah <b>60 detik</b>.</li>
       <li>Kecepatan jelajah <b>50 km/dtk</b> (boost 800, warp penuh 4000). Jelajah hingga orbit 430 untuk <b>lubang hitam Cygnus X-1</b> — awas gravitasinya menyedot pesawat!</li>
       <li>Dekati planet sampai muncul prompt, checklist 8/8 untuk menamatkan misi. Jelajahi juga <b>objek Bima Sakti</b> (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan <b>galaksi lain</b> (Andromeda, Triangulum, LMC, Whirlpool, Sombrero) lewat autopilot.</li>
       <li>Skala: diameter proporsional akurat, jarak dikompresi + warp agar playable. Bukan 1:1 mentah. Jarak asli tetap dicantumkan di panel info.</li>
