@@ -193,12 +193,30 @@ bodies.push(bhBody);
 /* ============ PESAWAT FUTURISTIK (sumbu +Y = depan/moncong) ============ */
 function mat(c, emissive=0x000000, ei=0){ return new THREE.MeshStandardMaterial({color:c,roughness:0.35,metalness:0.75,emissive,emissiveIntensity:ei}); }
 function glowM(c){ return new THREE.MeshBasicMaterial({color:c}); }
-function addFlame(g, color, r=0.5, len=3){
-  const flame=new THREE.Mesh(new THREE.ConeGeometry(r,len,16),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.9}));
-  flame.position.y=-1.8; flame.rotation.x=Math.PI; flame.name='flame'; g.add(flame);
-  const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(color),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0.9}));
-  halo.scale.set(3,3,1); halo.position.y=-1.6; halo.name='engineHalo'; g.add(halo);
+function addEngines(g,color,xs,y=-4.0,r=0.4,len=2.2){
+  const grp=new THREE.Group(); grp.name='flame';
+  xs.forEach(x=>{
+    const f=new THREE.Mesh(new THREE.ConeGeometry(r,len,14),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.85}));
+    f.position.set(x,y-len*0.5,0); f.rotation.x=Math.PI; grp.add(f);
+    const core=new THREE.Mesh(new THREE.ConeGeometry(r*0.45,len*0.65,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.9}));
+    core.position.set(x,y-len*0.32,0); core.rotation.x=Math.PI; grp.add(core);
+  });
+  g.add(grp);
+  const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(color),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0.85}));
+  const hs=Math.max(2.6,xs.length*1.9); halo.scale.set(hs,hs,1); halo.position.set(0,y,0); halo.name='engineHalo'; g.add(halo);
 }
+/* Planform ekstrusi: bentuk sayap/badan pada bidang XY (X = rentang, Y = maju),
+   ketebalan ke Z (atas). Hasilnya badan aerodinamis bersayap — bukan tabung roket. */
+function extrudePlanform(pts, depth, bevel, m){
+  const sh=new THREE.Shape();
+  pts.forEach(([x,y],i)=> i?sh.lineTo(x,y):sh.moveTo(x,y));
+  sh.closePath();
+  const geo=new THREE.ExtrudeGeometry(sh,{depth,bevelEnabled:bevel>0,bevelThickness:bevel,bevelSize:bevel,bevelSegments:2,steps:1,curveSegments:6});
+  geo.translate(0,0,-depth/2);
+  m.side=THREE.DoubleSide;
+  return new THREE.Mesh(geo,m);
+}
+function mirrorPts(pts){ return pts.map(([x,y])=>[-x,y]).reverse(); }
 function glowTex(cssColor){
   if(_glowCache[cssColor])return _glowCache[cssColor];
   const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
@@ -206,61 +224,97 @@ function glowTex(cssColor){
   g.fillStyle=gr;g.fillRect(0,0,64,64);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;_glowCache[cssColor]=t;return t;
 }
-/* NSX Vanguard — interseptor panah siluman, aksen cyan */
+/* NSX Vanguard — interseptor sayap delta, badan lifting-body + kanopi kaca */
 function buildVanguard(){
   const g=new THREE.Group(), accent=0x38e1ff;
-  const hull=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.7,8,12),mat(0x1a2233)); hull.position.y=3.4; g.add(hull);
-  const nose=new THREE.Mesh(new THREE.ConeGeometry(0.35,2.6,12),mat(0x2a3a55)); nose.position.y=8.7; g.add(nose);
-  const canopy=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),new THREE.MeshStandardMaterial({color:accent,roughness:0.1,metalness:0.2,emissive:accent,emissiveIntensity:0.7,transparent:true,opacity:0.9}));
-  canopy.scale.set(1,1.8,1); canopy.position.set(0,6.2,0.28); g.add(canopy);
-  [-1,1].forEach(s=>{ // sayap panah
-    const w=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.12,1.4),mat(0x111827)); w.position.set(s*1.5,2.2,-0.4); w.rotation.y=s*-0.5; w.rotation.z=s*0.12; g.add(w);
-    const tip=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.14,1.1),glowM(accent)); tip.position.set(s*2.7,2.35,-0.9); tip.rotation.y=s*-0.5; g.add(tip);
+  g.userData.lights={navX:4.45,navY:-1.0,navZ:0.05,strobeY:4.9,engineY:-4.4};
+  const body=extrudePlanform([[0,5.1],[0.45,3.5],[0.95,1.6],[1.05,-0.5],[0.92,-2.4],[0.5,-3.7],[-0.5,-3.7],[-0.92,-2.4],[-1.05,-0.5],[-0.95,1.6],[-0.45,3.5]],0.6,0.3,mat(0x161f30));
+  body.scale.z=0.78; g.add(body);
+  const spine=new THREE.Mesh(new THREE.BoxGeometry(0.42,3.4,0.26),mat(0x2b3d5c)); spine.position.set(0,0.2,0.36); g.add(spine);
+  const canopy=new THREE.Mesh(new THREE.SphereGeometry(0.66,24,16,0,Math.PI*2,0,Math.PI/2),
+    new THREE.MeshStandardMaterial({color:0x0b1622,roughness:0.05,metalness:0.9,emissive:0x38e1ff,emissiveIntensity:0.3,transparent:true,opacity:0.92}));
+  canopy.scale.set(0.82,1.5,0.62); canopy.position.set(0,2.15,0.3); canopy.rotation.x=-0.16; g.add(canopy);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.035,8,28),glowM(accent));
+  rim.rotation.x=Math.PI/2; rim.scale.set(1.15,1.7,1); rim.position.set(0,2.16,0.3); g.add(rim);
+  const wingPts=[[0.9,1.85],[4.6,-0.7],[4.55,-1.65],[1.0,-2.9]];
+  [-1,1].forEach(s=>{
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.1,0.035,mat(0x141d2c));
+    w.position.z=-0.06; g.add(w);
+    const edge=new THREE.Mesh(new THREE.BoxGeometry(4.3,0.06,0.06),glowM(accent));
+    edge.position.set(s*2.75,0.6,0.06); edge.rotation.z=s>0?-0.6:0.6; g.add(edge);
+    const tip=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.8,0.55),mat(0x0d1420));
+    tip.position.set(s*4.45,-1.15,0.28); tip.rotation.y=s*0.32; tip.rotation.x=-0.12; g.add(tip);
+    const tipGlow=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.3,0.06),glowM(accent)); tipGlow.position.set(s*4.46,0.12,0.52); g.add(tipGlow);
+    const nac=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.42,2.7,20),mat(0x0e1622));
+    nac.position.set(s*1.85,-2.55,0); g.add(nac);
+    const intake=new THREE.Mesh(new THREE.TorusGeometry(0.35,0.06,10,24),glowM(accent));
+    intake.rotation.x=Math.PI/2; intake.position.set(s*1.85,-1.2,0); g.add(intake);
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.1,0.9),mat(0x101a28));
+    fin.position.set(s*0.6,-2.9,0.55); fin.rotation.z=s*0.28; fin.rotation.x=-0.22; g.add(fin);
   });
-  const fin=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.6,1.2),mat(0x111827)); fin.position.set(0,3.4,-0.9); fin.rotation.x=0.3; g.add(fin);
-  [-0.45,0,0.45].forEach(x=>{ // strip cahaya lambung
-    const s=new THREE.Mesh(new THREE.BoxGeometry(0.08,5.5,0.06),glowM(accent)); s.position.set(x,3.4,0.62); g.add(s);
-  });
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.09,10,28),glowM(accent)); ring.position.y=0.6; ring.rotation.x=Math.PI/2; g.add(ring);
-  [-0.3,0.3].forEach(x=>{ const n=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.24,0.7,10),mat(0x0a0f1c)); n.position.set(x,-0.4,0); g.add(n); });
-  addFlame(g,'#55e5ff',0.55,3.2);
+  addEngines(g,'#55e5ff',[-1.85,1.85],-3.95,0.42,2.4);
   return g;
 }
-/* NSX Odyssey — penjelajah berat, cincin warp ganda ungu */
+/* NSX Odyssey — penjelajah sayap lebar, lambung katamaran + cincin warp nacelle */
 function buildOdyssey(){
   const g=new THREE.Group(), accent=0xa78bfa;
-  const hull=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.95,7,14),mat(0x232038)); hull.position.y=3.2; g.add(hull);
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(0.8,18,14,0,Math.PI*2,0,Math.PI/2),mat(0x3a3355)); dome.position.y=6.7; g.add(dome);
-  const bridge=new THREE.Mesh(new THREE.SphereGeometry(0.4,14,14),new THREE.MeshStandardMaterial({color:accent,emissive:accent,emissiveIntensity:0.9,roughness:0.2})); bridge.position.set(0,6.4,0.5); g.add(bridge);
-  [1.1,2.3].forEach(y=>{ // cincin warp ganda
-    const r=new THREE.Mesh(new THREE.TorusGeometry(1.7,0.13,10,40),glowM(accent)); r.position.y=y; r.rotation.x=Math.PI/2; g.add(r);
+  g.userData.lights={navX:4.95,navY:-0.6,navZ:0.05,strobeY:4.6,engineY:-4.3};
+  const body=extrudePlanform([[0,5.0],[0.75,2.8],[1.15,0.6],[1.1,-2.4],[0.55,-3.9],[-0.55,-3.9],[-1.1,-2.4],[-1.15,0.6],[-0.75,2.8]],0.85,0.3,mat(0x1e1b30));
+  body.scale.z=0.8; g.add(body);
+  const deck=new THREE.Mesh(new THREE.SphereGeometry(0.85,26,18,0,Math.PI*2,0,Math.PI/2),
+    new THREE.MeshStandardMaterial({color:0x0d1226,roughness:0.04,metalness:0.9,emissive:0xa78bfa,emissiveIntensity:0.35,transparent:true,opacity:0.9}));
+  deck.scale.set(0.8,2.1,0.7); deck.position.set(0,1.5,0.3); g.add(deck);
+  [-1,1].forEach(s=>{
+    const hull=extrudePlanform([[0,2.7],[0.6,1.2],[0.7,-2.9],[0.35,-3.7],[-0.35,-3.7],[-0.7,-2.9],[-0.6,1.2]],0.7,0.22,mat(0x171426));
+    hull.position.set(s*2.9,0,0); hull.scale.z=0.85; g.add(hull);
+    [ -3.4,-4.15 ].forEach(y=>{
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.1,10,32),glowM(accent));
+      ring.rotation.x=Math.PI/2; ring.position.set(s*2.9,y,0); g.add(ring);
+    });
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.35,1.1),mat(0x121022));
+    fin.position.set(s*2.9,-2.7,0.75); fin.rotation.z=s*0.3; fin.rotation.x=-0.25; g.add(fin);
+    for(let i=0;i<4;i++){
+      const win=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.22,0.12),glowM(0xffe9a8));
+      win.position.set(s*3.28,-0.3-i*0.65,0.3); g.add(win);
+    }
   });
-  [-1,1].forEach(s=>{ // 4 stabilisator
-    const w=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.16,1.0),mat(0x191624)); w.position.set(s*1.9,4.6,0); g.add(w);
-    const w2=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.14,0.9),mat(0x191624)); w2.position.set(s*1.4,1.4,0); g.add(w2);
-    const strip=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.05,0.2),glowM(accent)); strip.position.set(s*1.9,4.72,0.3); g.add(strip);
+  const wingPts=[[0.9,1.0],[4.45,0.1],[4.55,-2.7],[1.0,-2.3]];
+  [-1,1].forEach(s=>{
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.12,0.04,mat(0x181528));
+    g.add(w);
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.05,0.05),glowM(accent));
+    strip.position.set(s*2.7,-0.75,0.08); strip.rotation.z=s>0?-0.24:0.24; g.add(strip);
+    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,1.1,12),mat(0x0f0c1c));
+    pod.rotation.x=Math.PI/2; pod.position.set(s*4.2,-1.9,0); g.add(pod);
   });
-  for(let i=0;i<10;i++){ // jendela kabin bercahaya
-    const a=i/10*Math.PI*2;
-    const win=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8),glowM(0xffe9a8));
-    win.position.set(Math.cos(a)*0.88,5.6,Math.sin(a)*0.88); g.add(win);
-  }
-  addFlame(g,'#c084fc',0.7,3.6);
+  addEngines(g,'#c084fc',[-2.9,2.9],-3.9,0.6,2.6);
   return g;
 }
-/* NSX Aurora — pengintai jarum emas, sirip layar surya */
+/* NSX Aurora — pengintai sayap maju (forward-swept) + panel surya emas */
 function buildAurora(){
   const g=new THREE.Group(), accent=0x7dffb2, gold=0xc9a227;
-  const hull=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.5,9,10),mat(0x2a2418)); hull.position.y=3.8; g.add(hull);
-  const needle=new THREE.Mesh(new THREE.ConeGeometry(0.28,3,10),mat(gold,0x442200,0.4)); needle.position.y=9.8; g.add(needle);
-  const eye=new THREE.Mesh(new THREE.SphereGeometry(0.2,12,12),glowM(0xff5566)); eye.position.set(0,7.6,0.3); g.add(eye); // sensor merah
-  [-1,1].forEach(s=>{ // sirip layar surya emas
-    const sail=new THREE.Mesh(new THREE.BoxGeometry(0.06,3.4,1.8),new THREE.MeshStandardMaterial({color:gold,roughness:0.3,metalness:0.9,emissive:0x553300,emissiveIntensity:0.35,side:THREE.DoubleSide}));
-    sail.position.set(s*1.0,3.2,-0.6); sail.rotation.y=s*0.35; g.add(sail);
-    const edge=new THREE.Mesh(new THREE.BoxGeometry(0.08,3.4,0.08),glowM(accent)); edge.position.set(s*1.0,3.2,0.35); g.add(edge);
+  g.userData.lights={navX:4.15,navY:0.9,navZ:0.05,strobeY:5.3,engineY:-4.4};
+  const body=extrudePlanform([[0,5.4],[0.3,3.6],[0.6,1.2],[0.68,-2.2],[0.4,-3.9],[-0.4,-3.9],[-0.68,-2.2],[-0.6,1.2],[-0.3,3.6]],0.5,0.22,mat(0x241f14));
+  body.scale.z=0.75; g.add(body);
+  const canopy=new THREE.Mesh(new THREE.SphereGeometry(0.5,22,16,0,Math.PI*2,0,Math.PI/2),
+    new THREE.MeshStandardMaterial({color:0x101a14,roughness:0.05,metalness:0.9,emissive:0x7dffb2,emissiveIntensity:0.3,transparent:true,opacity:0.92}));
+  canopy.scale.set(0.75,1.5,0.6); canopy.position.set(0,2.3,0.28); canopy.rotation.x=-0.15; g.add(canopy);
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(0.2,14,12),glowM(0xff5566)); eye.position.set(0,4.35,0.26); g.add(eye);
+  const wingPts=[[0.6,2.4],[4.1,1.2],[3.95,0.25],[0.7,-2.1]];
+  const panelPts=[[1.1,1.9],[3.7,1.0],[3.6,0.35],[1.2,-1.5]];
+  [-1,1].forEach(s=>{
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.09,0.03,mat(0x1a160f));
+    w.position.z=-0.02; g.add(w);
+    const panel=extrudePlanform(s>0?panelPts:mirrorPts(panelPts),0.03,0,new THREE.MeshStandardMaterial({color:gold,roughness:0.35,metalness:0.9,emissive:0x3a2600,emissiveIntensity:0.5}));
+    panel.position.z=0.07; g.add(panel);
+    const edge=new THREE.Mesh(new THREE.BoxGeometry(3.9,0.05,0.05),glowM(accent));
+    edge.position.set(s*2.55,1.85,0.02); edge.rotation.z=s>0?-0.33:0.33; g.add(edge);
+    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,1.0,10),mat(0x0f0c08));
+    pod.rotation.x=Math.PI/2; pod.position.set(s*3.95,0.85,0); g.add(pod);
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.9,0.8),mat(0x141009));
+    fin.position.set(s*0.5,-2.7,0.45); fin.rotation.z=s*0.25; fin.rotation.x=-0.2; g.add(fin);
   });
-  const collar=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.08,10,24),glowM(accent)); collar.position.y=1.2; collar.rotation.x=Math.PI/2; g.add(collar);
-  addFlame(g,'#7dffb2',0.4,2.8);
+  addEngines(g,'#7dffb2',[-0.75,0.75],-4.0,0.3,2.0);
   return g;
 }
 const builders={ 'nsx-vanguard':buildVanguard, 'nsx-odyssey':buildOdyssey, 'nsx-aurora':buildAurora };
@@ -268,17 +322,18 @@ const builders={ 'nsx-vanguard':buildVanguard, 'nsx-odyssey':buildOdyssey, 'nsx-
 /* Lampu navigasi + cahaya mesin agar pesawat jelas terlihat dalam gelap */
 function addRocketLights(){
   if(rocketMesh.getObjectByName('navLights')) return;
+  const L=rocketMesh.userData.lights||{navX:0.7,navY:4.2,navZ:0,strobeY:8.6,engineY:-2.2};
   const grp=new THREE.Group(); grp.name='navLights';
   const mk=(color,x)=>{
-    const s=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,10),
+    const s=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),
       new THREE.MeshBasicMaterial({color}));
-    s.position.set(x,4.2,0); grp.add(s);
+    s.position.set(x,L.navY,L.navZ||0); grp.add(s);
   };
-  mk(0xff3333,-0.7); mk(0x33ff66,0.7); // merah kiri, hijau kanan (standar penerbangan)
-  const strobe=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),
+  mk(0xff3333,-L.navX); mk(0x33ff66,L.navX); // merah kiri, hijau kanan (standar penerbangan)
+  const strobe=new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10),
     new THREE.MeshBasicMaterial({color:0xffffff}));
-  strobe.position.set(0,8.6,0); strobe.name='strobe'; grp.add(strobe);
-  const engine=new THREE.PointLight(0x66aaff,0,25); engine.position.set(0,-2.2,0); engine.name='engineLight'; grp.add(engine);
+  strobe.position.set(0,L.strobeY,0.2); strobe.name='strobe'; grp.add(strobe);
+  const engine=new THREE.PointLight(0x66aaff,0,25); engine.position.set(0,L.engineY,0); engine.name='engineLight'; grp.add(engine);
   rocketMesh.add(grp);
 }
 
@@ -329,23 +384,35 @@ document.addEventListener('mousemove',e=>{
   }
 });
 // touch look (geser kanan) + joystick kiri
-const joy={x:0,y:0}; let lookId=null, lx=0, ly=0;
+const joy={x:0,y:0}; let lookId=null, lx=0, ly=0, lookDX=0, lookDY=0;
+const TOUCH_LOOK=0.0016; // rad/px — kalem & smoothing (dulu 0,005 terlalu liar)
 const joyEl=document.getElementById('joy-left'), knob=document.getElementById('joy-knob');
+// jangan pernah dianggap "geser kamera" kalau sentuhan mulai di tombol/panel UI
+const uiTouch=t=>!!(t.target&&t.target.closest&&t.target.closest('button,#map-panel,#planet-panel,#help-modal,#rocket-select,#mode-select,.warp-btn'));
 joyEl?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
 addEventListener('touchstart',e=>{
   for(const t of e.changedTouches){
     if(t.clientX<innerWidth/2 && t.clientY>innerHeight/2){ joy.id=t.identifier;
       const r=joyEl.getBoundingClientRect(); joy.cx=r.left+60; joy.cy=r.top+60; }
-    else if(lookId===null){ lookId=t.identifier; lx=t.clientX; ly=t.clientY; }
+    else if(lookId===null && !uiTouch(t)){ lookId=t.identifier; lx=t.clientX; ly=t.clientY; }
   }
 },{passive:true});
 addEventListener('touchmove',e=>{
   for(const t of e.changedTouches){
-    if(t.identifier===joy.id){ let dx=(t.clientX-joy.cx)/50, dy=(t.clientY-joy.cy)/50;
-      const m=Math.hypot(dx,dy)||1, cl=Math.min(m,1); dx=dx/m*cl; dy=dy/m*cl; joy.x=dx; joy.y=dy;
-      knob.style.transform=`translate(${dx*32}px,${dy*32}px)`; }
-    if(t.identifier===lookId){ S.yaw-=(t.clientX-lx)*0.005; S.pitch-=(t.clientY-ly)*0.005;
-      S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch)); lx=t.clientX; ly=t.clientY; }
+    if(t.identifier===joy.id){ let dx=(t.clientX-joy.cx)/60, dy=(t.clientY-joy.cy)/60;
+      const m=Math.hypot(dx,dy);
+      if(m<0.1){ joy.x=joy.y=0; }
+      else { const cl=Math.min(m,1); joy.x=dx/m*cl; joy.y=dy/m*cl; }
+      knob.style.transform=`translate(${joy.x*32}px,${joy.y*32}px)`; }
+    if(t.identifier===lookId){
+      const dx=t.clientX-lx, dy=t.clientY-ly; lx=t.clientX; ly=t.clientY;
+      if(Math.abs(dx)+Math.abs(dy)>1.2){
+        lookDX+=dx; lookDY+=dy; // diterapkan halus di loop (lihat animate)
+        // sentuhan melihat = kontrol manual → batalkan autopilot/mode ikuti
+        if(S.target){S.target=null;restoreWarp();renderPlanetList();}
+        if(S.follow){S.follow=null;restoreWarp();renderPlanetList();toast('🛸 Kontrol manual — mode ikuti planet dimatikan');}
+      }
+    }
   }
 },{passive:true});
 addEventListener('touchend',e=>{ for(const t of e.changedTouches){ if(t.identifier===joy.id){joy.x=joy.y=0;knob.style.transform='';} if(t.identifier===lookId)lookId=null; } });
@@ -519,6 +586,15 @@ function animate(){
   bhDisk.rotation.z+=dt*0.5; photon.rotation.z-=dt*0.25; // cakram akresi berputar
 
   if(S.playing && !S.paused){
+    // kamera sentuh: terapkan akumulasi delta dgn smoothing → tidak liar
+    if(isTouch&&(lookDX||lookDY)){
+      const k=Math.min(1,dt*14);
+      S.yaw-=lookDX*TOUCH_LOOK*k; S.pitch-=lookDY*TOUCH_LOOK*k;
+      S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch));
+      lookDX*=(1-k); lookDY*=(1-k);
+      if(Math.abs(lookDX)<0.08)lookDX=0;
+      if(Math.abs(lookDY)<0.08)lookDY=0;
+    }
     // orientasi kapal dari yaw/pitch
     shipGroup.quaternion.setFromEuler(new THREE.Euler(S.pitch,S.yaw,0,'YXZ'));
     shipGroup.getWorldDirection(fwd); fwd.negate(); // -Z = maju
@@ -617,7 +693,12 @@ function animate(){
       const thrusting=acc.lengthSq()>0.01;
       let max=42; if(keys.ShiftLeft||keys.ShiftRight||S.boost)max=130; if(S.warpDrive)max=650;
       if(thrusting&&S.fuel>0){
-        acc.normalize().multiplyScalar(max*2.2*dt);
+        // joystick analog: dorongan ikut seberapa jauh tuas digeser (kontrol halus)
+        const joyMag=Math.min(1,Math.hypot(joy.x,joy.y));
+        const btnThrust=document.getElementById('m-thrust')?.classList.contains('on');
+        const keyMove=keys.KeyW||keys.KeyS||keys.KeyA||keys.KeyD||keys.Space||keys.ControlLeft||keys.KeyQ;
+        const analog=(keyMove||btnThrust)?1:Math.max(0.3,joyMag);
+        acc.normalize().multiplyScalar(max*2.2*dt*analog);
         S.vel.add(acc);
         S.fuel=Math.max(0,S.fuel-(S.warpDrive?14:(max>42?5:1.4))*dt);
         if(S.fuel<=0)toast('⚠️ BBM habis! Tekan R untuk isi ulang.');

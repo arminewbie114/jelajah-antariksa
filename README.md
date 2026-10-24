@@ -19,7 +19,7 @@ python -m http.server 8080
 ```
 
 ## Kontrol
-- Desktop: WASD + Mouse (klik canvas untuk kunci mouse), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info, M peta+autopilot, R bensin, 1/2/3 ganti roket.
+- Desktop: WASD + Mouse (klik canvas untuk kunci mouse), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info, M peta+autopilot, R bensin, 1/2/3 ganti pesawat.
 - HP: joystick kiri + geser kanan untuk lihat + tombol ▲ 🌌 ℹ️ 🪟.
 
 ## Akurasi data (NASA Planetary Fact Sheet)
@@ -34,6 +34,6 @@ Diameter, jarak AU, periode orbit, suhu, gravitasi akurat. Skala render dikompre
 index.html  — splash, HUD, panel info, peta, kontrol mobile
 css/style.css
 js/dataPlanets.js — data akurat NASA (sumber kebenaran)
-js/main.js — scene, orbit, roket, FPS controls, autopilot, minimap, audio
+js/main.js — scene, orbit, pesawat bersayap, FPS controls, autopilot, minimap, audio
 ```
 >>>>>>> 5bc37e8 (Nusantara Space Explorer — siap GitHub Pages)
