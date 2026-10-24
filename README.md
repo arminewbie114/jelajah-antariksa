@@ -20,6 +20,7 @@ python -m http.server 8080
 
 ## Kontrol
 - Desktop: WASD + Mouse (klik canvas untuk kunci mouse), Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly, E info, M peta+autopilot, R bensin, 1/2/3 ganti pesawat.
+- Mobile: stik kiri = maju/mundur/strafe, stik kanan = arahkan atas/bawah/kiri/kanan.
 - HP: joystick kiri + geser kanan untuk lihat + tombol ▲ 🌌 ℹ️ 🪟.
 
 ## Akurasi data (NASA Planetary Fact Sheet)

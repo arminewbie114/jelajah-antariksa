@@ -61,8 +61,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
  #mobile-controls{display:block}
  #ctrl-hint{display:none}
  #joy-left{position:fixed;left:16px;bottom:90px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(56,225,255,.4);z-index:30}
+ #joy-right{position:fixed;right:16px;bottom:90px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(167,139,250,.55);z-index:30}
  #joy-knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(56,225,255,.5)}
- #mobile-btns{position:fixed;right:12px;bottom:90px;display:grid;gap:8px;z-index:30}
+ #joy-knob2{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(167,139,250,.55)}
+ #mobile-btns{position:fixed;right:12px;bottom:232px;display:grid;grid-template-columns:repeat(2,56px);gap:8px;z-index:30}
  #mobile-btns button{width:56px;height:56px;border-radius:50%;font-size:20px;background:rgba(12,24,48,.85);color:#fff;border:1px solid var(--accent)}
  #cockpit-dash{bottom:220px}
 }

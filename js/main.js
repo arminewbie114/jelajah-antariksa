@@ -193,6 +193,7 @@ bodies.push(bhBody);
 /* ============ PESAWAT FUTURISTIK (sumbu +Y = depan/moncong) ============ */
 function mat(c, emissive=0x000000, ei=0){ return new THREE.MeshStandardMaterial({color:c,roughness:0.35,metalness:0.75,emissive,emissiveIntensity:ei}); }
 function glowM(c){ return new THREE.MeshBasicMaterial({color:c}); }
+function whiteM(c=0xf2f6fc){ return new THREE.MeshStandardMaterial({color:c,roughness:0.42,metalness:0.25}); }
 function addEngines(g,color,xs,y=-4.0,r=0.4,len=2.2){
   const grp=new THREE.Group(); grp.name='flame';
   xs.forEach(x=>{
@@ -228,9 +229,9 @@ function glowTex(cssColor){
 function buildVanguard(){
   const g=new THREE.Group(), accent=0x38e1ff;
   g.userData.lights={navX:4.45,navY:-1.0,navZ:0.05,strobeY:4.9,engineY:-4.4};
-  const body=extrudePlanform([[0,5.1],[0.45,3.5],[0.95,1.6],[1.05,-0.5],[0.92,-2.4],[0.5,-3.7],[-0.5,-3.7],[-0.92,-2.4],[-1.05,-0.5],[-0.95,1.6],[-0.45,3.5]],0.6,0.3,mat(0x161f30));
+  const body=extrudePlanform([[0,5.1],[0.45,3.5],[0.95,1.6],[1.05,-0.5],[0.92,-2.4],[0.5,-3.7],[-0.5,-3.7],[-0.92,-2.4],[-1.05,-0.5],[-0.95,1.6],[-0.45,3.5]],0.6,0.3,whiteM(0xf2f6fc));
   body.scale.z=0.78; g.add(body);
-  const spine=new THREE.Mesh(new THREE.BoxGeometry(0.42,3.4,0.26),mat(0x2b3d5c)); spine.position.set(0,0.2,0.36); g.add(spine);
+  const spine=new THREE.Mesh(new THREE.BoxGeometry(0.42,3.4,0.26),whiteM(0xdbe6f4)); spine.position.set(0,0.2,0.36); g.add(spine);
   const canopy=new THREE.Mesh(new THREE.SphereGeometry(0.66,24,16,0,Math.PI*2,0,Math.PI/2),
     new THREE.MeshStandardMaterial({color:0x0b1622,roughness:0.05,metalness:0.9,emissive:0x38e1ff,emissiveIntensity:0.3,transparent:true,opacity:0.92}));
   canopy.scale.set(0.82,1.5,0.62); canopy.position.set(0,2.15,0.3); canopy.rotation.x=-0.16; g.add(canopy);
@@ -238,18 +239,18 @@ function buildVanguard(){
   rim.rotation.x=Math.PI/2; rim.scale.set(1.15,1.7,1); rim.position.set(0,2.16,0.3); g.add(rim);
   const wingPts=[[0.9,1.85],[4.6,-0.7],[4.55,-1.65],[1.0,-2.9]];
   [-1,1].forEach(s=>{
-    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.1,0.035,mat(0x141d2c));
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.1,0.035,whiteM(0xf5f8fd));
     w.position.z=-0.06; g.add(w);
     const edge=new THREE.Mesh(new THREE.BoxGeometry(4.3,0.06,0.06),glowM(accent));
     edge.position.set(s*2.75,0.6,0.06); edge.rotation.z=s>0?-0.6:0.6; g.add(edge);
-    const tip=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.8,0.55),mat(0x0d1420));
+    const tip=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.8,0.55),whiteM(0xe0e9f5));
     tip.position.set(s*4.45,-1.15,0.28); tip.rotation.y=s*0.32; tip.rotation.x=-0.12; g.add(tip);
     const tipGlow=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.3,0.06),glowM(accent)); tipGlow.position.set(s*4.46,0.12,0.52); g.add(tipGlow);
-    const nac=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.42,2.7,20),mat(0x0e1622));
+    const nac=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.42,2.7,20),whiteM(0xe8eef7));
     nac.position.set(s*1.85,-2.55,0); g.add(nac);
     const intake=new THREE.Mesh(new THREE.TorusGeometry(0.35,0.06,10,24),glowM(accent));
     intake.rotation.x=Math.PI/2; intake.position.set(s*1.85,-1.2,0); g.add(intake);
-    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.1,0.9),mat(0x101a28));
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.1,0.9),whiteM(0xdde7f3));
     fin.position.set(s*0.6,-2.9,0.55); fin.rotation.z=s*0.28; fin.rotation.x=-0.22; g.add(fin);
   });
   addEngines(g,'#55e5ff',[-1.85,1.85],-3.95,0.42,2.4);
@@ -259,19 +260,19 @@ function buildVanguard(){
 function buildOdyssey(){
   const g=new THREE.Group(), accent=0xa78bfa;
   g.userData.lights={navX:4.95,navY:-0.6,navZ:0.05,strobeY:4.6,engineY:-4.3};
-  const body=extrudePlanform([[0,5.0],[0.75,2.8],[1.15,0.6],[1.1,-2.4],[0.55,-3.9],[-0.55,-3.9],[-1.1,-2.4],[-1.15,0.6],[-0.75,2.8]],0.85,0.3,mat(0x1e1b30));
+  const body=extrudePlanform([[0,5.0],[0.75,2.8],[1.15,0.6],[1.1,-2.4],[0.55,-3.9],[-0.55,-3.9],[-1.1,-2.4],[-1.15,0.6],[-0.75,2.8]],0.85,0.3,whiteM(0xf3f6fb));
   body.scale.z=0.8; g.add(body);
   const deck=new THREE.Mesh(new THREE.SphereGeometry(0.85,26,18,0,Math.PI*2,0,Math.PI/2),
     new THREE.MeshStandardMaterial({color:0x0d1226,roughness:0.04,metalness:0.9,emissive:0xa78bfa,emissiveIntensity:0.35,transparent:true,opacity:0.9}));
   deck.scale.set(0.8,2.1,0.7); deck.position.set(0,1.5,0.3); g.add(deck);
   [-1,1].forEach(s=>{
-    const hull=extrudePlanform([[0,2.7],[0.6,1.2],[0.7,-2.9],[0.35,-3.7],[-0.35,-3.7],[-0.7,-2.9],[-0.6,1.2]],0.7,0.22,mat(0x171426));
+    const hull=extrudePlanform([[0,2.7],[0.6,1.2],[0.7,-2.9],[0.35,-3.7],[-0.35,-3.7],[-0.7,-2.9],[-0.6,1.2]],0.7,0.22,whiteM(0xf0f4fa));
     hull.position.set(s*2.9,0,0); hull.scale.z=0.85; g.add(hull);
     [ -3.4,-4.15 ].forEach(y=>{
       const ring=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.1,10,32),glowM(accent));
       ring.rotation.x=Math.PI/2; ring.position.set(s*2.9,y,0); g.add(ring);
     });
-    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.35,1.1),mat(0x121022));
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.35,1.1),whiteM(0xdae4f1));
     fin.position.set(s*2.9,-2.7,0.75); fin.rotation.z=s*0.3; fin.rotation.x=-0.25; g.add(fin);
     for(let i=0;i<4;i++){
       const win=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.22,0.12),glowM(0xffe9a8));
@@ -280,11 +281,11 @@ function buildOdyssey(){
   });
   const wingPts=[[0.9,1.0],[4.45,0.1],[4.55,-2.7],[1.0,-2.3]];
   [-1,1].forEach(s=>{
-    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.12,0.04,mat(0x181528));
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.12,0.04,whiteM(0xf5f8fd));
     g.add(w);
     const strip=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.05,0.05),glowM(accent));
     strip.position.set(s*2.7,-0.75,0.08); strip.rotation.z=s>0?-0.24:0.24; g.add(strip);
-    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,1.1,12),mat(0x0f0c1c));
+    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,1.1,12),whiteM(0xe1eaf5));
     pod.rotation.x=Math.PI/2; pod.position.set(s*4.2,-1.9,0); g.add(pod);
   });
   addEngines(g,'#c084fc',[-2.9,2.9],-3.9,0.6,2.6);
@@ -294,7 +295,7 @@ function buildOdyssey(){
 function buildAurora(){
   const g=new THREE.Group(), accent=0x7dffb2, gold=0xc9a227;
   g.userData.lights={navX:4.15,navY:0.9,navZ:0.05,strobeY:5.3,engineY:-4.4};
-  const body=extrudePlanform([[0,5.4],[0.3,3.6],[0.6,1.2],[0.68,-2.2],[0.4,-3.9],[-0.4,-3.9],[-0.68,-2.2],[-0.6,1.2],[-0.3,3.6]],0.5,0.22,mat(0x241f14));
+  const body=extrudePlanform([[0,5.4],[0.3,3.6],[0.6,1.2],[0.68,-2.2],[0.4,-3.9],[-0.4,-3.9],[-0.68,-2.2],[-0.6,1.2],[-0.3,3.6]],0.5,0.22,whiteM(0xf2f5fa));
   body.scale.z=0.75; g.add(body);
   const canopy=new THREE.Mesh(new THREE.SphereGeometry(0.5,22,16,0,Math.PI*2,0,Math.PI/2),
     new THREE.MeshStandardMaterial({color:0x101a14,roughness:0.05,metalness:0.9,emissive:0x7dffb2,emissiveIntensity:0.3,transparent:true,opacity:0.92}));
@@ -303,15 +304,15 @@ function buildAurora(){
   const wingPts=[[0.6,2.4],[4.1,1.2],[3.95,0.25],[0.7,-2.1]];
   const panelPts=[[1.1,1.9],[3.7,1.0],[3.6,0.35],[1.2,-1.5]];
   [-1,1].forEach(s=>{
-    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.09,0.03,mat(0x1a160f));
+    const w=extrudePlanform(s>0?wingPts:mirrorPts(wingPts),0.09,0.03,whiteM(0xf5f8fd));
     w.position.z=-0.02; g.add(w);
     const panel=extrudePlanform(s>0?panelPts:mirrorPts(panelPts),0.03,0,new THREE.MeshStandardMaterial({color:gold,roughness:0.35,metalness:0.9,emissive:0x3a2600,emissiveIntensity:0.5}));
     panel.position.z=0.07; g.add(panel);
     const edge=new THREE.Mesh(new THREE.BoxGeometry(3.9,0.05,0.05),glowM(accent));
     edge.position.set(s*2.55,1.85,0.02); edge.rotation.z=s>0?-0.33:0.33; g.add(edge);
-    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,1.0,10),mat(0x0f0c08));
+    const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,1.0,10),whiteM(0xe1eaf5));
     pod.rotation.x=Math.PI/2; pod.position.set(s*3.95,0.85,0); g.add(pod);
-    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.9,0.8),mat(0x141009));
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.9,0.8),whiteM(0xdae4f1));
     fin.position.set(s*0.5,-2.7,0.45); fin.rotation.z=s*0.25; fin.rotation.x=-0.2; g.add(fin);
   });
   addEngines(g,'#7dffb2',[-0.75,0.75],-4.0,0.3,2.0);
@@ -383,39 +384,35 @@ document.addEventListener('mousemove',e=>{
     if(S.follow){S.follow=null;restoreWarp();renderPlanetList();toast('🛸 Kontrol manual — mode ikuti planet dimatikan');}
   }
 });
-// touch look (geser kanan) + joystick kiri
-const joy={x:0,y:0}; let lookId=null, lx=0, ly=0, lookDX=0, lookDY=0;
-const TOUCH_LOOK=0.0016; // rad/px — kalem & smoothing (dulu 0,005 terlalu liar)
-const joyEl=document.getElementById('joy-left'), knob=document.getElementById('joy-knob');
-// jangan pernah dianggap "geser kamera" kalau sentuhan mulai di tombol/panel UI
-const uiTouch=t=>!!(t.target&&t.target.closest&&t.target.closest('button,#map-panel,#planet-panel,#help-modal,#rocket-select,#mode-select,.warp-btn'));
-joyEl?.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-addEventListener('touchstart',e=>{
-  for(const t of e.changedTouches){
-    if(t.clientX<innerWidth/2 && t.clientY>innerHeight/2){ joy.id=t.identifier;
-      const r=joyEl.getBoundingClientRect(); joy.cx=r.left+60; joy.cy=r.top+60; }
-    else if(lookId===null && !uiTouch(t)){ lookId=t.identifier; lx=t.clientX; ly=t.clientY; }
-  }
-},{passive:true});
-addEventListener('touchmove',e=>{
-  for(const t of e.changedTouches){
-    if(t.identifier===joy.id){ let dx=(t.clientX-joy.cx)/60, dy=(t.clientY-joy.cy)/60;
-      const m=Math.hypot(dx,dy);
-      if(m<0.1){ joy.x=joy.y=0; }
-      else { const cl=Math.min(m,1); joy.x=dx/m*cl; joy.y=dy/m*cl; }
-      knob.style.transform=`translate(${joy.x*32}px,${joy.y*32}px)`; }
-    if(t.identifier===lookId){
-      const dx=t.clientX-lx, dy=t.clientY-ly; lx=t.clientX; ly=t.clientY;
-      if(Math.abs(dx)+Math.abs(dy)>1.2){
-        lookDX+=dx; lookDY+=dy; // diterapkan halus di loop (lihat animate)
-        // sentuhan melihat = kontrol manual → batalkan autopilot/mode ikuti
-        if(S.target){S.target=null;restoreWarp();renderPlanetList();}
-        if(S.follow){S.follow=null;restoreWarp();renderPlanetList();toast('🛸 Kontrol manual — mode ikuti planet dimatikan');}
-      }
-    }
-  }
-},{passive:true});
-addEventListener('touchend',e=>{ for(const t of e.changedTouches){ if(t.identifier===joy.id){joy.x=joy.y=0;knob.style.transform='';} if(t.identifier===lookId)lookId=null; } });
+// ===== Kontrol sentuh: stik kiri = gerak, stik kanan = arah hadap =====
+const joy={x:0,y:0,id:null,cx:0,cy:0};     // kiri: atas maju, bawah mundur, kiri/kanan strafe
+const joyLook={x:0,y:0,id:null,cx:0,cy:0}; // kanan: atas/bawah pitch, kiri/kanan yaw
+function bindStick(el,knobEl,state){
+  if(!el||!knobEl)return;
+  const R=60, DEAD=0.12;
+  const update=t=>{
+    let dx=(t.clientX-state.cx)/R, dy=(t.clientY-state.cy)/R;
+    const m=Math.hypot(dx,dy);
+    if(m<DEAD){ state.x=0; state.y=0; }
+    else { const cl=Math.min(m,1); state.x=dx/m*cl; state.y=dy/m*cl; }
+    knobEl.style.transform=`translate(${state.x*32}px,${state.y*32}px)`;
+  };
+  const reset=()=>{ state.id=null; state.x=state.y=0; knobEl.style.transform=''; };
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const r=el.getBoundingClientRect();
+    state.cx=r.left+r.width/2; state.cy=r.top+r.height/2;
+    const t=e.changedTouches[0]; state.id=t.identifier; update(t);
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    for(const t of e.changedTouches) if(t.identifier===state.id) update(t);
+  },{passive:false});
+  el.addEventListener('touchend',e=>{ for(const t of e.changedTouches) if(t.identifier===state.id) reset(); });
+  el.addEventListener('touchcancel',reset);
+}
+bindStick(document.getElementById('joy-left'),document.getElementById('joy-knob'),joy);
+bindStick(document.getElementById('joy-right'),document.getElementById('joy-knob2'),joyLook);
 
 /* ============ AUDIO MESIN ============ */
 let AC=null, engGain=null;
@@ -586,14 +583,12 @@ function animate(){
   bhDisk.rotation.z+=dt*0.5; photon.rotation.z-=dt*0.25; // cakram akresi berputar
 
   if(S.playing && !S.paused){
-    // kamera sentuh: terapkan akumulasi delta dgn smoothing → tidak liar
-    if(isTouch&&(lookDX||lookDY)){
-      const k=Math.min(1,dt*14);
-      S.yaw-=lookDX*TOUCH_LOOK*k; S.pitch-=lookDY*TOUCH_LOOK*k;
+    // stik kanan: arahkan kapal (analog, kecepatan putar halus)
+    if(isTouch&&(joyLook.x||joyLook.y)){
+      const turn=1.45;
+      S.yaw-=joyLook.x*turn*dt;
+      S.pitch-=joyLook.y*turn*dt;
       S.pitch=Math.max(-1.45,Math.min(1.45,S.pitch));
-      lookDX*=(1-k); lookDY*=(1-k);
-      if(Math.abs(lookDX)<0.08)lookDX=0;
-      if(Math.abs(lookDY)<0.08)lookDY=0;
     }
     // orientasi kapal dari yaw/pitch
     shipGroup.quaternion.setFromEuler(new THREE.Euler(S.pitch,S.yaw,0,'YXZ'));
@@ -602,7 +597,7 @@ function animate(){
     upV.crossVectors(right,fwd).normalize();
 
     // Input manual (tombol gerak / joystick) membatalkan autopilot & mode ikuti
-    const manualThrust=keys.KeyW||keys.KeyS||keys.KeyA||keys.KeyD||keys.Space||keys.ControlLeft||keys.KeyQ||Math.abs(joy.x)>0.15||Math.abs(joy.y)>0.15;
+    const manualThrust=keys.KeyW||keys.KeyS||keys.KeyA||keys.KeyD||keys.Space||keys.ControlLeft||keys.KeyQ||Math.abs(joy.x)>0.15||Math.abs(joy.y)>0.15||Math.abs(joyLook.x)>0.15||Math.abs(joyLook.y)>0.15;
     if(manualThrust&&(S.target||S.follow)){
       S.target=null;
       if(S.follow){S.follow=null; toast('🛸 Kontrol manual — mode ikuti planet dimatikan');}
@@ -688,10 +683,12 @@ function animate(){
       if(keys.KeyW)acc.add(fwd); if(keys.KeyS)acc.sub(fwd);
       if(keys.KeyD)acc.add(right); if(keys.KeyA)acc.sub(right);
       if(keys.Space)acc.add(upV); if(keys.ControlLeft||keys.KeyQ)acc.sub(upV);
-      acc.x+=joy.x; acc.z+=-joy.y*0; acc.addScaledVector(fwd,-joy.y);
+      acc.addScaledVector(right,joy.x);   // stik kiri: kiri/kanan = strafe
+      acc.addScaledVector(fwd,-joy.y);    // stik kiri: atas = maju, bawah = mundur
       if(document.getElementById('m-thrust')?.classList.contains('on'))acc.add(fwd);
       const thrusting=acc.lengthSq()>0.01;
-      let max=42; if(keys.ShiftLeft||keys.ShiftRight||S.boost)max=130; if(S.warpDrive)max=650;
+      let max=16.25; // default tanpa boost = 100 km/dtk di HUD
+      if(keys.ShiftLeft||keys.ShiftRight||S.boost)max=130; if(S.warpDrive)max=650;
       if(thrusting&&S.fuel>0){
         // joystick analog: dorongan ikut seberapa jauh tuas digeser (kontrol halus)
         const joyMag=Math.min(1,Math.hypot(joy.x,joy.y));
