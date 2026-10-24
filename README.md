@@ -22,12 +22,12 @@ Atau pakai ekstensi *Live Server* di VS Code.
 - **Warp global:** host mengatur waktu dunia `1× / 10× / 100×`; tombol warp pemain lain dinonaktifkan agar semua orbit tetap sama. Autopilot di multiplayer mengikuti warp host (offline tetap otomatis 1×).
 - **Host migration:** jika host keluar, pemain tersisa memilih host baru dan melanjutkan state dunia terakhir. Progres kunjungan `S.visited` tetap **personal** tiap pemain.
 - Kapal pemain lain tetap visual (belum ada PvP/chat). Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. State pesawat dikirim ±10×/detik.
-- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi WebRTC bisa gagal di NAT ketat/jaringan seluler; jika muncul peringatan NAT ketat, buka **⚙️ Jaringan & TURN** (tombol di splash/HUD) lalu isi URL + username + credential TURN, mis. dari [Metered Open Relay](https://www.metered.ca/tools/openrelay/). Klik **🔎 Tes TURN** untuk memastikan relay menghasilkan kandidat relay, lalu **Simpan** dan luncurkan ulang. Kedua pemain sebaiknya memakai TURN.
-- Kredensial TURN hanya disimpan di `sessionStorage` tab, tidak pernah masuk repo. Tanpa TURN, koneksi langsung/STUN tetap dicoba lebih dulu.
+- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi memakai **STUN/direct otomatis** (tanpa input atau akun); NAT ketat/simetris, jaringan seluler, atau firewall yang memblokir WebRTC bisa membuat koneksi P2P gagal.
+- Tidak ada server TURN atau kredensial yang disimpan di aplikasi. Jika koneksi gagal, coba jaringan lain atau gunakan kode ruangan yang sama di jaringan yang lebih terbuka.
 - Jika CDN/relay tidak tersedia, game tetap bisa dimainkan **offline** setelah nama diisi.
 
 ## Kontrol
-- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, C kokpit/free-fly (default Free-Fly FPS), E info (toggle), M peta + autopilot, R isi bensin, 1/2/3/4 ganti pesawat.
+- **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, E info (toggle), M peta + autopilot, R isi bensin, 1/2/3/4 ganti pesawat.
 - **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan), tombol **⚡** = tembak laser (tahan untuk tembak otomatis).
 - **Autopilot:** pilih tujuan di peta (M). Kapal otomatis mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk membuka info; gerakkan mouse/WASD untuk batal.
 

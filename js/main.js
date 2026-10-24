@@ -690,11 +690,11 @@ rocketMesh.rotation.x = -Math.PI/2;
 rocketMesh.scale.setScalar(SHIP_SCALE);
 addRocketLights();
 shipGroup.position.set(earth.mesh.position.x+8, 4, earth.mesh.position.z+8);
-camera.position.set(0,1.6,1);
+camera.position.set(0,2.4,5.5);
 shipGroup.add(camera);
 
 /* ============ STATE + KONTROL FPS ============ */
-const S = { playing:false, cockpit:false, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
+const S = { playing:false, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
   boost:false, warpDrive:false, timeWarp:1, target:null, follow:null, visited:new Set(), rocketId:'nsx-vanguard',
   sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null,
   playerName:'', roomCode:'' };
@@ -703,7 +703,6 @@ const keys={};
 addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(!S.playing) return;
-  if(e.code==='KeyC') toggleCockpit();
   if(e.code==='KeyE') showNearestInfo();
   if(e.code==='KeyM') toggleMap();
   if(e.code==='KeyR') refuel();
@@ -774,11 +773,6 @@ function initAudio(){
 /* ============ UI ============ */
 const $=id=>document.getElementById(id);
 function toast(msg,ms=2600){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',ms); }
-function toggleCockpit(){ S.cockpit=!S.cockpit; $('cockpit').classList.toggle('hidden',!S.cockpit);
-  // Kokpit: kamera di kursi pilot. Free-fly: kamera chase di belakang-atas
-  // roket (+Z = belakang) sehingga badan pesawat full terlihat di depan.
-  camera.position.set(0,S.cockpit?1.6:2.4,S.cockpit?1:5.5);
-  rocketMesh.visible=true; toast(S.cockpit?'🪟 Mode Kokpit Imersif':'🎥 Mode Free-Fly FPS'); }
 function toggleWarpDrive(){ S.warpDrive=!S.warpDrive; $('btn-warpdrive').classList.toggle('on',S.warpDrive); $('warp-lines').classList.toggle('on',S.warpDrive); }
 function refuel(){ S.fuel=100; toast('⛽ Bahan bakar penuh!'); }
 function setRocket(id){
@@ -1244,9 +1238,8 @@ function updateOnlineUI(){
   if(mpStatus==='online'&&net){
     const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
     const role=worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host');
-    const turn=net.usingTurn?' · TURN':'';
     note.classList.add('online');
-    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}${turn}`;
+    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}`;
   } else if(mpStatus==='connecting'){
     note.textContent='🌐 Menghubungkan ke ruang P2P...';
   } else if(mpStatus==='offline'){
@@ -1276,115 +1269,6 @@ function refreshLobbyState(){
   }
 }
 
-const TURN_STORE_KEY='nse.turn.v1';
-function turnFields(){
-  return {url:$('turn-url'),user:$('turn-user'),cred:$('turn-cred'),status:$('turn-status')};
-}
-function setTurnStatus(text,kind){
-  const el=$('turn-status');
-  if(!el)return;
-  el.className='lobby-note'+(kind?' '+kind:'');
-  el.textContent=text;
-}
-function loadTurnFields(){
-  const f=turnFields();
-  if(!f.url)return;
-  try{
-    const saved=JSON.parse(sessionStorage.getItem(TURN_STORE_KEY)||'null');
-    if(saved&&typeof saved==='object'){
-      if(typeof saved.url==='string')f.url.value=saved.url;
-      if(typeof saved.username==='string')f.user.value=saved.username;
-      if(typeof saved.credential==='string')f.cred.value=saved.credential;
-    }
-  }catch{}
-  if(f.url.value.trim())setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
-}
-function saveTurnFields(){
-  const f=turnFields();
-  if(!f.url)return;
-  try{
-    sessionStorage.setItem(TURN_STORE_KEY,JSON.stringify({
-      url:f.url.value.trim(),
-      username:f.user.value.trim(),
-      credential:f.cred.value.trim()
-    }));
-  }catch{}
-}
-function readTurnConfig(){
-  const f=turnFields();
-  if(!f.url)return [];
-  const raw=f.url.value.trim();
-  const username=f.user.value.trim();
-  const credential=f.cred.value.trim();
-  if(!raw){
-    if(username||credential){
-      setTurnStatus('Isi URL TURN, atau kosongkan username/credential jika tidak memakai TURN.','offline');
-      toast('⚠️ URL TURN masih kosong.',3600);
-      return null;
-    }
-    return [];
-  }
-  const urls=raw.split(/[\s,]+/).filter(Boolean);
-  if(urls.length<1||urls.length>4||urls.some(url=>url.length>300||!/^turns?:[^\s,]+$/i.test(url))){
-    setTurnStatus('URL TURN tidak valid. Gunakan format turn:host:port atau turns:host:port?transport=tcp.','offline');
-    toast('⚠️ URL TURN tidak valid.',4200);
-    return null;
-  }
-  if(username.length>128||credential.length>256){
-    setTurnStatus('Username/credential TURN terlalu panjang.','offline');
-    toast('⚠️ Username/credential TURN terlalu panjang.',4200);
-    return null;
-  }
-  if((username&&!credential)||(!username&&credential)){
-    setTurnStatus('Username dan credential TURN harus diisi berpasangan.','offline');
-    toast('⚠️ Username dan credential TURN harus diisi berpasangan.',4200);
-    return null;
-  }
-  const server={urls:urls.length===1?urls[0]:urls};
-  if(username){ server.username=username; server.credential=credential; }
-  return [server];
-}
-function openNetModal(){
-  const f=turnFields();
-  if(f.url&&f.url.value.trim())setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
-  $('net-modal').classList.remove('hidden');
-  f.url?.focus();
-}
-function closeNetModal(){ $('net-modal').classList.add('hidden'); }
-async function testTurnConfig(){
-  const turnConfig=readTurnConfig();
-  if(!turnConfig)return;
-  if(!turnConfig.length){
-    setTurnStatus('Isi URL TURN (dan kredensial jika diperlukan) sebelum tes.','offline');
-    return;
-  }
-  setTurnStatus('Menguji relay TURN...','');
-  let pc=null;
-  let finished=false;
-  let relayFound=false;
-  const finish=()=>{
-    if(finished)return;
-    finished=true;
-    try{ pc?.close(); }catch{}
-    if(relayFound)setTurnStatus('✅ Relay TURN ditemukan — kredensial bisa dipakai.','online');
-    else setTurnStatus('❌ TURN tidak menghasilkan kandidat relay. Periksa URL, username/credential, port TCP/TLS, dan izin firewall.','offline');
-  };
-  try{
-    pc=new RTCPeerConnection({iceServers:turnConfig,iceTransportPolicy:'relay'});
-    pc.onicecandidate=event=>{
-      const candidate=event.candidate?.candidate||'';
-      if(candidate.includes(' typ relay'))relayFound=true;
-      if(!event.candidate)finish();
-    };
-    pc.createDataChannel('turn-test');
-    await pc.setLocalDescription(await pc.createOffer());
-    setTimeout(finish,9000);
-  }catch(error){
-    setTurnStatus(`❌ Gagal memulai tes TURN: ${error?.message||error}`,'offline');
-    try{ pc?.close(); }catch{}
-  }
-}
-
 function applySpawnOffset(){
   let seed;
   try{
@@ -1407,12 +1291,11 @@ function localNetState(){
   };
 }
 
-function beginMultiplayer(turnConfig=[]){
+function beginMultiplayer(){
   mpStatus='connecting';
   updateOnlineUI();
   startMultiplayer({
     roomCode:S.roomCode,
-    turnConfig,
     getLocalState:localNetState,
     onState:applyPeerState,
     onWorld:applyWorldMessage,
@@ -1440,10 +1323,7 @@ function beginMultiplayer(turnConfig=[]){
         toast('⚠️ Kode/password ruangan tidak cocok dengan pemain lain. Samakan kode ruangan.',6500);
         return;
       }
-      const msg=turnConfig.length
-        ? '⚠️ Koneksi P2P lewat TURN gagal. Periksa URL/username/credential TURN, atau coba jaringan lain.'
-        : '⚠️ Koneksi P2P gagal — NAT ketat. Buka ⚙️ Jaringan & TURN untuk mengisi TURN, lalu sambung ulang.';
-      toast(msg,6500);
+      toast('⚠️ Koneksi P2P gagal — kemungkinan NAT ketat atau jaringan memblokir WebRTC. Coba jaringan lain.',6500);
     }
   }).then(mp=>{
     if(!mp){
@@ -1457,7 +1337,7 @@ function beginMultiplayer(turnConfig=[]){
     updateOnlineUI();
     net.sendWorld({k:'hello'});
     startWorldElection();
-    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain${turnConfig.length?' · TURN':''}`,3600);
+    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
   }).catch(()=>{
     mpStatus='offline';
     updateOnlineUI();
@@ -1471,11 +1351,6 @@ ROCKETS.forEach((r,i)=>{
   if(i===0)b.classList.add('active'); b.onclick=()=>setRocket(r.id); $('rocket-select').appendChild(b);
 });
 setRocket('nsx-vanguard');
-document.querySelectorAll('#mode-select button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('#mode-select button').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-  const want=b.dataset.mode==='cockpit'; if(want!==S.cockpit) toggleCockpit();
-});
-$('btn-cockpit').onclick=toggleCockpit; $('m-cockpit').onclick=toggleCockpit;
 $('btn-warpdrive').onclick=toggleWarpDrive; $('m-warp').onclick=toggleWarpDrive;
 $('btn-boost').onclick=()=>{S.boost=!S.boost;$('btn-boost').classList.toggle('on',S.boost);};
 $('m-thrust').onclick=()=>{S.boost=!S.boost;toast(S.boost?'⚡ Boost ON':'Boost OFF');};
@@ -1507,25 +1382,6 @@ function toggleMap(){ $('map-panel').classList.toggle('hidden'); }
 $('btn-map').onclick=toggleMap; $('map-close').onclick=toggleMap;
 $('btn-help').onclick=()=>$('help-modal').classList.remove('hidden');
 $('help-close').onclick=()=>$('help-modal').classList.add('hidden');
-$('btn-net').onclick=openNetModal;
-$('btn-net-splash').onclick=openNetModal;
-$('turn-close').onclick=closeNetModal;
-$('turn-test').onclick=testTurnConfig;
-$('turn-save').onclick=()=>{
-  const turnConfig=readTurnConfig();
-  if(!turnConfig)return;
-  saveTurnFields();
-  if(S.playing){
-    setTurnStatus('Tersimpan — memuat ulang untuk menerapkan TURN...','online');
-    setTimeout(()=>location.reload(),900);
-  } else if(turnConfig.length){
-    setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
-    toast('✅ Pengaturan TURN tersimpan.',3000);
-  } else {
-    setTurnStatus('Tidak memakai TURN. TURN akan dipakai jika diisi saat meluncur.','');
-    toast('Pengaturan TURN dikosongkan.',3000);
-  }
-};
 $('btn-pause').onclick=()=>{S.paused=!S.paused;if(S.paused){S.firing=false;S.aimTarget=null;updateAimHud(null);}toast(S.paused?'⏸️ Jeda — klik ▶ untuk lanjut':'▶ Lanjut');$('btn-pause').textContent=S.paused?'▶':'⏸️';};
 $('btn-sound').onclick=e=>{S.sound=!S.sound;e.target.textContent=S.sound?'🔊':'🔇';if(engGain)engGain.gain.value=0;};
 $('panel-close').onclick=closePanel;
@@ -1540,7 +1396,6 @@ $('btn-stop-nav').onclick=()=>{S.target=null;S.follow=null;restoreWarp();renderP
   }catch{}
   nameInput.addEventListener('input',refreshLobbyState);
   roomInput.addEventListener('input',refreshLobbyState);
-  loadTurnFields();
   refreshLobbyState();
 }
 addEventListener('pagehide',()=>{
@@ -1559,9 +1414,6 @@ $('btn-launch').onclick=()=>{
     toast('⚠️ Isi nama pilot (2–16 karakter) dan kode ruangan yang valid.',3600);
     return;
   }
-  const turnConfig=readTurnConfig();
-  if(!turnConfig){ openNetModal(); return; }
-  saveTurnFields();
   S.playerName=name;
   S.roomCode=roomCode;
   try{
@@ -1574,7 +1426,7 @@ $('btn-launch').onclick=()=>{
   initAudio(); AC?.resume();
   canvas.requestPointerLock?.();
   toast(`🛫 Lepas landas, ${name}! Dekati objek langit untuk info · M untuk autopilot`);
-  beginMultiplayer(turnConfig);
+  beginMultiplayer();
 };
 // daftar tujuan autopilot, dikelompokkan per wilayah
 function bodyCategory(b){
@@ -2171,7 +2023,6 @@ function animate(){
       const engL=rocketMesh.getObjectByName('engineLight');
       if(engL)engL.intensity=(thrusting&&S.fuel>0)?(S.warpDrive?5:2.5):0;
       if(engGain&&AC){ const g=S.sound?(thrusting?0.25:(S.warpDrive?0.3:0.02)):0; engGain.gain.setTargetAtTime(g,AC.currentTime,0.1); }
-      if(S.cockpit&&thrusting){ camera.position.x=(Math.random()-0.5)*0.03; }
     }
     shipGroup.position.addScaledVector(S.vel,dt);
     // strobo kedip agar pesawat mudah terlihat
@@ -2234,11 +2085,9 @@ function animate(){
     const WORLD_MAX=650, SPEED_MAX=4000;
     const dispKmh=Math.min(SPEED_MAX,Math.round(kmh/WORLD_MAX*SPEED_MAX));
     $('hud-speed').textContent=`🚀 ${Math.round(dispKmh).toLocaleString('id-ID')} km/dtk`;
-    $('mfd-speed').textContent=Math.round(dispKmh).toLocaleString('id-ID');
-    $('fuel-fill').style.width=S.fuel+'%'; $('fuel-pct').textContent=Math.round(S.fuel)+'%'; $('mfd-fuel').textContent=Math.round(S.fuel)+'%';
+    $('fuel-fill').style.width=S.fuel+'%'; $('fuel-pct').textContent=Math.round(S.fuel)+'%';
     const tgt=S.target||S.follow||S.nearBody;
     $('hud-target').textContent=tgt?`🎯 ${tgt.data.name} · ${Math.round(shipGroup.position.distanceTo(tgt.mesh.position))} unit`:'🎯 —';
-    $('mfd-nav').textContent=tgt?tgt.data.name:'—';
     $('hud-fps').textContent=Math.round(fpsA)+' FPS';
     if(!$('map-panel').classList.contains('hidden'))drawMap();
   }

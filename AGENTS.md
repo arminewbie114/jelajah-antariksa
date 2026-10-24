@@ -29,7 +29,7 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 ## Batasan desain yang harus dijaga
 - Skala semi-realistis playable; pesawat `SHIP_SCALE=0.15` (lebih besar dari Bulan di game).
 - Kecepatan tampilan HUD dinormalisasi: `WORLD_MAX=650` → `SPEED_MAX=4000 km/dtk`. Default tanpa boost = **50 km/dtk** (world 8,125); boost 800; warp penuh 4000.
-- Kamera default **Free-Fly FPS** (chase di belakang-atas); `C` beralih ke Kokpit Imersif.
+- Kamera hanya **Free-Fly FPS** (chase di belakang-atas); tidak ada mode kokpit atau tombol `C`.
 - Pesawat futuristik **bersayap** (bukan roket), **dominan putih** dengan aksen menyala: Vanguard (delta), Odyssey (sayap lebar/katamaran), Aurora (forward-swept + panel emas), Garuda (Airbus A330-300, livery putih-biru Garuda Indonesia, ekor burung Garuda).
 - Mobile: dua stik analog — kiri gerak (atas maju, bawah mundur, kiri/kanan strafe), kanan mengarahkan (atas/bawah pitch, kiri/kanan yaw).
 - Autopilot/ikuti: tanpa batas kecepatan maksimum; offline warp waktu dikunci 1×, di multiplayer mengikuti warp global host. Parkir di sisi siang planet, tombol `E` toggle panel.
@@ -54,6 +54,6 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Sanitasi semua input peer: nama, `rocketId` (harus ada di `builders`), posisi finite ±2600, pitch ±1.5; snapshot/ID/index divalidasi sebelum diterapkan.
 - Saat dispose remote ship jangan dispose texture builder yang di-cache (Garuda); cukup geometry/material dan texture name tag milik sprite remote.
 - `addRocketLights(target, withEngineLight)` harus tetap mendukung target model remote; nama grup `navLights`, `flame`, `engineHalo`, `strobe`, `engineLight` dipertahankan.
-- NAT ketat: TURN **opsional** lewat modal ⚙️ Jaringan & TURN (URL/username/credential), diteruskan ke `startMultiplayer({turnConfig})` lalu `config.turnConfig` Trystero. Jangan hardcode kredensial TURN di repo; simpan hanya di `sessionStorage` tab. Tanpa TURN, koneksi langsung/STUN bisa gagal.
+- Koneksi memakai **STUN/direct otomatis** bawaan Trystero. Tidak ada UI, input, API key, atau kredensial TURN. NAT ketat/firewall yang memblokir WebRTC bisa membuat koneksi gagal; jangan menambahkan TURN manual tanpa diminta.
 - Keterbatasan yang sudah disepakati: tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
 - Jangan `await` koneksi Trystero sebelum splash ditutup/pointer lock agar gesture audio tetap valid; mulai koneksi async setelah launch.

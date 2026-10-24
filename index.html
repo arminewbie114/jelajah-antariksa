@@ -27,10 +27,8 @@
   </div>
   <div class="hud-btns">
     <button id="btn-map" title="Peta (M)">🗺️</button>
-    <button id="btn-cockpit" title="Toggle Kokpit (C)">🪟</button>
     <button id="btn-sound" title="Suara">🔊</button>
     <button id="btn-help" title="Bantuan (H)">❓</button>
-    <button id="btn-net" title="Jaringan & TURN">⚙️</button>
     <button id="btn-pause" title="Jeda (Esc)">⏸️</button>
   </div>
 </header>
@@ -45,7 +43,7 @@
     <button id="btn-boost" title="Boost (Shift)">⚡ BOOST</button>
     <button id="btn-warpdrive" title="Warp Drive (J)">🌌 WARP</button>
   </div>
-  <div id="ctrl-hint">WASD gerak · Mouse lihat · <b>F/Klik</b> laser · <b>C</b> kokpit · <b>E</b> info · <b>M</b> peta · <b>R</b> bensin</div>
+  <div id="ctrl-hint">WASD gerak · Mouse lihat · <b>F/Klik</b> laser · <b>E</b> info · <b>M</b> peta · <b>R</b> bensin</div>
 </footer>
 
 <!-- Crosshair FPS -->
@@ -57,16 +55,6 @@
 </div>
 <div id="toast"></div>
 <div id="prompt-info">Tekan <b>E</b> untuk info planet</div>
-
-<!-- Kokpit overlay -->
-<div id="cockpit" class="hidden">
-  <div id="cockpit-frame"></div>
-  <div id="cockpit-dash">
-    <div class="mfd"><small>NAV</small><span id="mfd-nav">—</span></div>
-    <div class="mfd"><small>KECEPATAN</small><span id="mfd-speed">0</span></div>
-    <div class="mfd"><small>BBM</small><span id="mfd-fuel">100%</span></div>
-  </div>
-</div>
 
 <!-- Panel info planet -->
 <aside id="planet-panel" class="hidden">
@@ -102,7 +90,6 @@
     <button id="m-thrust">▲</button>
     <button id="m-warp">🌌</button>
     <button id="m-info">ℹ️</button>
-    <button id="m-cockpit">🪟</button>
   </div>
   <button id="m-fire" title="Tembak laser">⚡</button>
 </div>
@@ -120,16 +107,10 @@
       <input id="room-code" name="room" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Kosong = ruang publik" />
       <small class="field-hint">Isi kode yang sama agar bertemu teman. Tanpa kode = ruang publik.</small>
       <div id="mp-status" class="lobby-note" aria-live="polite">Isi nama pilot dulu untuk bisa meluncur.</div>
-      <button type="button" id="btn-net-splash" class="net-link">⚙️ Jaringan lanjutan · TURN untuk NAT ketat</button>
     </div>
     <label>Pilih Pesawatmu:</label>
     <div id="rocket-select"></div>
     <div id="rocket-spec"></div>
-    <label>Mode Kamera:</label>
-    <div id="mode-select">
-      <button data-mode="cockpit">🪟 Kokpit Imersif</button>
-      <button data-mode="freefly" class="active">🎥 Free-Fly FPS</button>
-    </div>
     <button id="btn-launch" disabled>🛫 LEPAS LANDAS</button>
     <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse), <b>F/Klik kiri</b> = laser · HP: stik kiri = gerak, stik kanan = arahkan, tombol <b>⚡</b> = tembak.<br/>Multiplayer P2P: pemain dengan ruangan sama berbagi posisi orbit, HP, kehancuran, dan warp host. Klik planet / dekati planet untuk panel info Indonesia.</p>
   </div>
@@ -141,38 +122,14 @@
     <ul>
       <li><b>WASD</b> maju/mundur/strafe, <b>Spasi/Ctrl</b> naik/turun, <b>Shift</b> boost, <b>J</b> warp drive.</li>
       <li><b>Mouse</b>: klik canvas untuk Pointer Lock, gerakkan untuk melihat. <b>HP</b>: stik kiri gerak, stik kanan arahkan.</li>
-      <li><b>C</b>: ganti kokpit / free-fly · <b>E</b>: info planet terdekat · <b>M</b>: peta & autopilot · <b>R</b>: isi BBM · <b>1/2/3/4</b>: ganti pesawat.</li>
+      <li><b>E</b>: info planet terdekat · <b>M</b>: peta & autopilot · <b>R</b>: isi BBM · <b>1/2/3/4</b>: ganti pesawat.</li>
       <li><b>F / klik kiri</b> (HP: tombol <b>⚡</b>): tembak laser. Asteroid hancur 1 tembakan; planet butuh beberapa, objek raksasa butuh puluhan–ratusan. Semua yang hancur kembali setelah <b>60 detik</b>.</li>
       <li>Kecepatan jelajah <b>50 km/dtk</b> (boost 800, warp penuh 4000). Jelajah hingga orbit 430 untuk <b>lubang hitam Cygnus X-1</b> — awas gravitasinya menyedot pesawat!</li>
       <li>Dekati planet sampai muncul prompt, checklist 8/8 untuk menamatkan misi. Jelajahi juga <b>objek Bima Sakti</b> (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan <b>galaksi lain</b> (Andromeda, Triangulum, LMC, Whirlpool, Sombrero) lewat autopilot.</li>
       <li>Skala: diameter proporsional akurat, jarak dikompresi + warp agar playable. Bukan 1:1 mentah. Jarak asli tetap dicantumkan di panel info.</li>
-      <li><b>Multiplayer P2P</b>: isi nama sebelum meluncur. Pemain lain di ruangan yang sama terlihat sebagai pesawat + nama, dan dunia ikut tersinkron. Satu pemain menjadi <b>host dunia 👑</b> yang mengatur warp global 1×/10×/100×; host bisa berganti jika keluar. HP, kehancuran, respawn, dan asteroid sama untuk semua, tetapi progres kunjungan tetap personal. Kosongkan kode ruangan untuk ruang publik, atau bagikan kode agar bermain dengan teman. Belum ada PvP/chat. Jika muncul peringatan <b>NAT ketat</b>, buka <b>⚙️ Jaringan &amp; TURN</b>, isi kredensial TURN (mis. Metered Open Relay), lalu sambung ulang.</li>
+      <li><b>Multiplayer P2P</b>: isi nama sebelum meluncur. Pemain lain di ruangan yang sama terlihat sebagai pesawat + nama, dan dunia ikut tersinkron. Satu pemain menjadi <b>host dunia 👑</b> yang mengatur warp global 1×/10×/100×; host bisa berganti jika keluar. HP, kehancuran, respawn, dan asteroid sama untuk semua, tetapi progres kunjungan tetap personal. Kosongkan kode ruangan untuk ruang publik, atau bagikan kode agar bermain dengan teman. Belum ada PvP/chat. Koneksi memakai STUN/direct; NAT ketat atau jaringan yang memblokir WebRTC bisa membuat koneksi gagal.</li>
     </ul>
     <button id="help-close">Tutup</button>
-  </div>
-</div>
-
-<div id="net-modal" class="hidden">
-  <div class="splash-card">
-    <h2>⚙️ Jaringan &amp; TURN</h2>
-    <p class="small">Trystero memakai WebRTC. Di NAT ketat/simetris atau jaringan seluler, koneksi P2P langsung bisa gagal tanpa server TURN. Isi kredensial TURN agar relay tetap tersedia.</p>
-    <div class="pilot-fields">
-      <label for="turn-url">URL TURN</label>
-      <input id="turn-url" type="text" autocomplete="off" spellcheck="false" placeholder="turns:global.relay.metered.ca:443?transport=tcp" />
-      <small class="field-hint">Boleh beberapa URL dipisah koma/baris baru. Gunakan <b>turns:</b> port 443 untuk firewall ketat.</small>
-      <label for="turn-user">Username TURN</label>
-      <input id="turn-user" type="text" autocomplete="off" spellcheck="false" />
-      <label for="turn-cred">Credential TURN</label>
-      <input id="turn-cred" type="password" autocomplete="off" spellcheck="false" />
-      <small class="field-hint">Kredensial disimpan sementara di sessionStorage tab ini, tidak di repo. Jangan pakai akun bersama.</small>
-      <div id="turn-status" class="lobby-note" aria-live="polite">Belum ada TURN. Isi jika muncul peringatan NAT ketat.</div>
-    </div>
-    <p class="small">Butuh TURN gratis? Buat credential di <a href="https://www.metered.ca/tools/openrelay/" target="_blank" rel="noopener">Metered Open Relay</a>, lalu salin URL, username, dan credential dari ICE servers array. Kedua pemain sebaiknya memakai TURN.</p>
-    <div class="net-actions">
-      <button id="turn-test">🔎 Tes TURN</button>
-      <button id="turn-save">💾 Simpan</button>
-      <button id="turn-close">Tutup</button>
-    </div>
   </div>
 </div>
 
