@@ -22,7 +22,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #ctrl-hint{opacity:.7}
 #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:rgba(255,255,255,.8);z-index:15;pointer-events:none;text-shadow:0 0 6px #000}
 #toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);padding:8px 16px;border-radius:12px;z-index:40;display:none}
-#prompt-info{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:rgba(20,40,80,.9);padding:8px 16px;border-radius:12px;border:1px solid var(--accent);z-index:25;display:none}
+#prompt-info{position:fixed;top:64px;left:12px;max-width:min(46vw,340px);background:rgba(20,40,80,.9);padding:8px 16px;border-radius:12px;border:1px solid var(--accent);z-index:25;display:none;box-shadow:0 0 14px rgba(56,225,255,.2)}
+@media (pointer:coarse){ #prompt-info{top:80px;left:10px;max-width:52vw;font-size:12px;padding:6px 12px} }
 #cockpit-frame{position:fixed;inset:0;pointer-events:none;z-index:10;background:
  radial-gradient(ellipse at 50% 120%,transparent 45%,rgba(8,12,24,.95) 46% 100%),
  linear-gradient(90deg,rgba(8,12,24,.95) 0 7%,transparent 7.5% 92.5%,rgba(8,12,24,.95) 93% 100%),
