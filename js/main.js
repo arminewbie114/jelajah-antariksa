@@ -1244,8 +1244,9 @@ function updateOnlineUI(){
   if(mpStatus==='online'&&net){
     const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
     const role=worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host');
+    const turn=net.usingTurn?' · TURN':'';
     note.classList.add('online');
-    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}`;
+    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}${turn}`;
   } else if(mpStatus==='connecting'){
     note.textContent='🌐 Menghubungkan ke ruang P2P...';
   } else if(mpStatus==='offline'){
@@ -1275,6 +1276,115 @@ function refreshLobbyState(){
   }
 }
 
+const TURN_STORE_KEY='nse.turn.v1';
+function turnFields(){
+  return {url:$('turn-url'),user:$('turn-user'),cred:$('turn-cred'),status:$('turn-status')};
+}
+function setTurnStatus(text,kind){
+  const el=$('turn-status');
+  if(!el)return;
+  el.className='lobby-note'+(kind?' '+kind:'');
+  el.textContent=text;
+}
+function loadTurnFields(){
+  const f=turnFields();
+  if(!f.url)return;
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(TURN_STORE_KEY)||'null');
+    if(saved&&typeof saved==='object'){
+      if(typeof saved.url==='string')f.url.value=saved.url;
+      if(typeof saved.username==='string')f.user.value=saved.username;
+      if(typeof saved.credential==='string')f.cred.value=saved.credential;
+    }
+  }catch{}
+  if(f.url.value.trim())setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
+}
+function saveTurnFields(){
+  const f=turnFields();
+  if(!f.url)return;
+  try{
+    sessionStorage.setItem(TURN_STORE_KEY,JSON.stringify({
+      url:f.url.value.trim(),
+      username:f.user.value.trim(),
+      credential:f.cred.value.trim()
+    }));
+  }catch{}
+}
+function readTurnConfig(){
+  const f=turnFields();
+  if(!f.url)return [];
+  const raw=f.url.value.trim();
+  const username=f.user.value.trim();
+  const credential=f.cred.value.trim();
+  if(!raw){
+    if(username||credential){
+      setTurnStatus('Isi URL TURN, atau kosongkan username/credential jika tidak memakai TURN.','offline');
+      toast('⚠️ URL TURN masih kosong.',3600);
+      return null;
+    }
+    return [];
+  }
+  const urls=raw.split(/[\s,]+/).filter(Boolean);
+  if(urls.length<1||urls.length>4||urls.some(url=>url.length>300||!/^turns?:[^\s,]+$/i.test(url))){
+    setTurnStatus('URL TURN tidak valid. Gunakan format turn:host:port atau turns:host:port?transport=tcp.','offline');
+    toast('⚠️ URL TURN tidak valid.',4200);
+    return null;
+  }
+  if(username.length>128||credential.length>256){
+    setTurnStatus('Username/credential TURN terlalu panjang.','offline');
+    toast('⚠️ Username/credential TURN terlalu panjang.',4200);
+    return null;
+  }
+  if((username&&!credential)||(!username&&credential)){
+    setTurnStatus('Username dan credential TURN harus diisi berpasangan.','offline');
+    toast('⚠️ Username dan credential TURN harus diisi berpasangan.',4200);
+    return null;
+  }
+  const server={urls:urls.length===1?urls[0]:urls};
+  if(username){ server.username=username; server.credential=credential; }
+  return [server];
+}
+function openNetModal(){
+  const f=turnFields();
+  if(f.url&&f.url.value.trim())setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
+  $('net-modal').classList.remove('hidden');
+  f.url?.focus();
+}
+function closeNetModal(){ $('net-modal').classList.add('hidden'); }
+async function testTurnConfig(){
+  const turnConfig=readTurnConfig();
+  if(!turnConfig)return;
+  if(!turnConfig.length){
+    setTurnStatus('Isi URL TURN (dan kredensial jika diperlukan) sebelum tes.','offline');
+    return;
+  }
+  setTurnStatus('Menguji relay TURN...','');
+  let pc=null;
+  let finished=false;
+  let relayFound=false;
+  const finish=()=>{
+    if(finished)return;
+    finished=true;
+    try{ pc?.close(); }catch{}
+    if(relayFound)setTurnStatus('✅ Relay TURN ditemukan — kredensial bisa dipakai.','online');
+    else setTurnStatus('❌ TURN tidak menghasilkan kandidat relay. Periksa URL, username/credential, port TCP/TLS, dan izin firewall.','offline');
+  };
+  try{
+    pc=new RTCPeerConnection({iceServers:turnConfig,iceTransportPolicy:'relay'});
+    pc.onicecandidate=event=>{
+      const candidate=event.candidate?.candidate||'';
+      if(candidate.includes(' typ relay'))relayFound=true;
+      if(!event.candidate)finish();
+    };
+    pc.createDataChannel('turn-test');
+    await pc.setLocalDescription(await pc.createOffer());
+    setTimeout(finish,9000);
+  }catch(error){
+    setTurnStatus(`❌ Gagal memulai tes TURN: ${error?.message||error}`,'offline');
+    try{ pc?.close(); }catch{}
+  }
+}
+
 function applySpawnOffset(){
   let seed;
   try{
@@ -1297,11 +1407,12 @@ function localNetState(){
   };
 }
 
-function beginMultiplayer(){
+function beginMultiplayer(turnConfig=[]){
   mpStatus='connecting';
   updateOnlineUI();
   startMultiplayer({
     roomCode:S.roomCode,
+    turnConfig,
     getLocalState:localNetState,
     onState:applyPeerState,
     onWorld:applyWorldMessage,
@@ -1322,7 +1433,18 @@ function beginMultiplayer(){
       }
       updateOnlineUI();
     },
-    onJoinError:()=>toast('⚠️ Gagal tersambung ke salah satu pemain — kemungkinan NAT ketat.',4200)
+    onJoinError:details=>{
+      const errorText=String(details?.error||'');
+      if(errorText)console.warn('[multiplayer] P2P join error:',errorText);
+      if(/incorrect room password/i.test(errorText)){
+        toast('⚠️ Kode/password ruangan tidak cocok dengan pemain lain. Samakan kode ruangan.',6500);
+        return;
+      }
+      const msg=turnConfig.length
+        ? '⚠️ Koneksi P2P lewat TURN gagal. Periksa URL/username/credential TURN, atau coba jaringan lain.'
+        : '⚠️ Koneksi P2P gagal — NAT ketat. Buka ⚙️ Jaringan & TURN untuk mengisi TURN, lalu sambung ulang.';
+      toast(msg,6500);
+    }
   }).then(mp=>{
     if(!mp){
       mpStatus='offline';
@@ -1335,7 +1457,7 @@ function beginMultiplayer(){
     updateOnlineUI();
     net.sendWorld({k:'hello'});
     startWorldElection();
-    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
+    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain${turnConfig.length?' · TURN':''}`,3600);
   }).catch(()=>{
     mpStatus='offline';
     updateOnlineUI();
@@ -1385,6 +1507,25 @@ function toggleMap(){ $('map-panel').classList.toggle('hidden'); }
 $('btn-map').onclick=toggleMap; $('map-close').onclick=toggleMap;
 $('btn-help').onclick=()=>$('help-modal').classList.remove('hidden');
 $('help-close').onclick=()=>$('help-modal').classList.add('hidden');
+$('btn-net').onclick=openNetModal;
+$('btn-net-splash').onclick=openNetModal;
+$('turn-close').onclick=closeNetModal;
+$('turn-test').onclick=testTurnConfig;
+$('turn-save').onclick=()=>{
+  const turnConfig=readTurnConfig();
+  if(!turnConfig)return;
+  saveTurnFields();
+  if(S.playing){
+    setTurnStatus('Tersimpan — memuat ulang untuk menerapkan TURN...','online');
+    setTimeout(()=>location.reload(),900);
+  } else if(turnConfig.length){
+    setTurnStatus('TURN tersimpan di tab ini — akan dipakai saat meluncur.','online');
+    toast('✅ Pengaturan TURN tersimpan.',3000);
+  } else {
+    setTurnStatus('Tidak memakai TURN. TURN akan dipakai jika diisi saat meluncur.','');
+    toast('Pengaturan TURN dikosongkan.',3000);
+  }
+};
 $('btn-pause').onclick=()=>{S.paused=!S.paused;if(S.paused){S.firing=false;S.aimTarget=null;updateAimHud(null);}toast(S.paused?'⏸️ Jeda — klik ▶ untuk lanjut':'▶ Lanjut');$('btn-pause').textContent=S.paused?'▶':'⏸️';};
 $('btn-sound').onclick=e=>{S.sound=!S.sound;e.target.textContent=S.sound?'🔊':'🔇';if(engGain)engGain.gain.value=0;};
 $('panel-close').onclick=closePanel;
@@ -1399,6 +1540,7 @@ $('btn-stop-nav').onclick=()=>{S.target=null;S.follow=null;restoreWarp();renderP
   }catch{}
   nameInput.addEventListener('input',refreshLobbyState);
   roomInput.addEventListener('input',refreshLobbyState);
+  loadTurnFields();
   refreshLobbyState();
 }
 addEventListener('pagehide',()=>{
@@ -1417,6 +1559,9 @@ $('btn-launch').onclick=()=>{
     toast('⚠️ Isi nama pilot (2–16 karakter) dan kode ruangan yang valid.',3600);
     return;
   }
+  const turnConfig=readTurnConfig();
+  if(!turnConfig){ openNetModal(); return; }
+  saveTurnFields();
   S.playerName=name;
   S.roomCode=roomCode;
   try{
@@ -1429,7 +1574,7 @@ $('btn-launch').onclick=()=>{
   initAudio(); AC?.resume();
   canvas.requestPointerLock?.();
   toast(`🛫 Lepas landas, ${name}! Dekati objek langit untuk info · M untuk autopilot`);
-  beginMultiplayer();
+  beginMultiplayer(turnConfig);
 };
 // daftar tujuan autopilot, dikelompokkan per wilayah
 function bodyCategory(b){

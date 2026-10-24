@@ -25,6 +25,24 @@ function sendSafe(action,data,options){
   }catch{}
 }
 
+function normalizeTurnConfig(input){
+  if(!Array.isArray(input))return [];
+  const out=[];
+  for(const server of input.slice(0,4)){
+    if(!server||typeof server!=='object')continue;
+    const rawUrls=Array.isArray(server.urls)?server.urls:[server.urls];
+    const urls=rawUrls.filter(url=>typeof url==='string'&&url.length<=300&&/^turns?:[^\s,]+$/i.test(url)).slice(0,4);
+    if(!urls.length)continue;
+    const item={urls:urls.length===1?urls[0]:urls};
+    if(typeof server.username==='string'&&server.username){
+      item.username=server.username.slice(0,128);
+      item.credential=String(server.credential??'').slice(0,256);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 export async function startMultiplayer(options={}){
   let trystero;
   try{
@@ -37,8 +55,10 @@ export async function startMultiplayer(options={}){
   const {joinRoom,selfId}=trystero;
   const roomCode=normalizeRoomCode(options.roomCode);
   const roomId=roomCode?PRIVATE_ROOM_PREFIX+roomCode:PUBLIC_ROOM;
+  const turnConfig=normalizeTurnConfig(options.turnConfig);
   const config={appId:APP_ID};
   if(roomCode)config.password='nse-room:'+roomCode;
+  if(turnConfig.length)config.turnConfig=turnConfig;
 
   try{
     const room=joinRoom(config,roomId,{
@@ -74,6 +94,7 @@ export async function startMultiplayer(options={}){
       roomId,
       roomCode,
       isPublic:!roomCode,
+      usingTurn:turnConfig.length>0,
       sendState(){
         const state=localState();
         if(state)sendSafe(shipAction,state);

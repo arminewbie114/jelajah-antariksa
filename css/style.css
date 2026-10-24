@@ -56,7 +56,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 #planet-list button.target{border-color:var(--accent);background:#123}
 #planet-list h4.planet-group{margin:10px 0 2px;font-size:12px;letter-spacing:.5px;color:#9fb6d8;text-transform:uppercase}
 #minimap{background:#02040c;border:1px solid rgba(56,225,255,.3);border-radius:12px;width:100%}
-#splash,#help-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,12,.72);z-index:100;padding:16px;overflow:auto}
+#splash,#help-modal,#net-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,12,.72);z-index:100;padding:16px;overflow:auto}
+#net-modal{z-index:110}
 .splash-card{background:linear-gradient(180deg,#0a1330,#060a1c);border:1px solid rgba(56,225,255,.45);border-radius:20px;padding:26px;max-width:620px;width:100%;box-shadow:0 0 60px rgba(56,225,255,.15)}
 .splash-card h1{color:var(--accent);margin-bottom:8px}
 .splash-card p{margin:8px 0;font-size:15px}
@@ -69,6 +70,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font
 .pilot-fields input::placeholder{color:#7d90ab}
 @media (pointer:coarse){.pilot-fields input{font-size:16px}}
 .field-hint{font-size:11px;opacity:.62}
+.net-link{margin-top:7px;background:none;border:0;color:#9fe8ff;text-align:left;padding:0;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.net-link:hover{color:var(--accent)}
+.net-actions{display:flex;gap:8px;margin-top:12px}
+.net-actions button{background:#0c1830;color:var(--txt);border:1px solid rgba(56,225,255,.4);border-radius:10px;padding:9px 14px;cursor:pointer;font:inherit}
+.net-actions button:hover{border-color:var(--accent);box-shadow:0 0 12px rgba(56,225,255,.4)}
+#net-modal a{color:#7df9ff}
 .req{color:#ff6b8a}
 .optional{font-weight:400;opacity:.6}
 .lobby-note{margin-top:7px;padding:8px 10px;border-radius:9px;background:rgba(56,225,255,.08);border:1px solid rgba(56,225,255,.25);font-size:12px;line-height:1.4}

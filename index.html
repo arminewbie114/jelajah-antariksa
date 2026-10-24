@@ -30,6 +30,7 @@
     <button id="btn-cockpit" title="Toggle Kokpit (C)">🪟</button>
     <button id="btn-sound" title="Suara">🔊</button>
     <button id="btn-help" title="Bantuan (H)">❓</button>
+    <button id="btn-net" title="Jaringan & TURN">⚙️</button>
     <button id="btn-pause" title="Jeda (Esc)">⏸️</button>
   </div>
 </header>
@@ -119,6 +120,7 @@
       <input id="room-code" name="room" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Kosong = ruang publik" />
       <small class="field-hint">Isi kode yang sama agar bertemu teman. Tanpa kode = ruang publik.</small>
       <div id="mp-status" class="lobby-note" aria-live="polite">Isi nama pilot dulu untuk bisa meluncur.</div>
+      <button type="button" id="btn-net-splash" class="net-link">⚙️ Jaringan lanjutan · TURN untuk NAT ketat</button>
     </div>
     <label>Pilih Pesawatmu:</label>
     <div id="rocket-select"></div>
@@ -144,9 +146,33 @@
       <li>Kecepatan jelajah <b>50 km/dtk</b> (boost 800, warp penuh 4000). Jelajah hingga orbit 430 untuk <b>lubang hitam Cygnus X-1</b> — awas gravitasinya menyedot pesawat!</li>
       <li>Dekati planet sampai muncul prompt, checklist 8/8 untuk menamatkan misi. Jelajahi juga <b>objek Bima Sakti</b> (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan <b>galaksi lain</b> (Andromeda, Triangulum, LMC, Whirlpool, Sombrero) lewat autopilot.</li>
       <li>Skala: diameter proporsional akurat, jarak dikompresi + warp agar playable. Bukan 1:1 mentah. Jarak asli tetap dicantumkan di panel info.</li>
-      <li><b>Multiplayer P2P</b>: isi nama sebelum meluncur. Pemain lain di ruangan yang sama terlihat sebagai pesawat + nama, dan dunia ikut tersinkron. Satu pemain menjadi <b>host dunia 👑</b> yang mengatur warp global 1×/10×/100×; host bisa berganti jika keluar. HP, kehancuran, respawn, dan asteroid sama untuk semua, tetapi progres kunjungan tetap personal. Kosongkan kode ruangan untuk ruang publik, atau bagikan kode agar bermain dengan teman. Belum ada PvP/chat; koneksi bisa gagal di jaringan NAT ketat.</li>
+      <li><b>Multiplayer P2P</b>: isi nama sebelum meluncur. Pemain lain di ruangan yang sama terlihat sebagai pesawat + nama, dan dunia ikut tersinkron. Satu pemain menjadi <b>host dunia 👑</b> yang mengatur warp global 1×/10×/100×; host bisa berganti jika keluar. HP, kehancuran, respawn, dan asteroid sama untuk semua, tetapi progres kunjungan tetap personal. Kosongkan kode ruangan untuk ruang publik, atau bagikan kode agar bermain dengan teman. Belum ada PvP/chat. Jika muncul peringatan <b>NAT ketat</b>, buka <b>⚙️ Jaringan &amp; TURN</b>, isi kredensial TURN (mis. Metered Open Relay), lalu sambung ulang.</li>
     </ul>
     <button id="help-close">Tutup</button>
+  </div>
+</div>
+
+<div id="net-modal" class="hidden">
+  <div class="splash-card">
+    <h2>⚙️ Jaringan &amp; TURN</h2>
+    <p class="small">Trystero memakai WebRTC. Di NAT ketat/simetris atau jaringan seluler, koneksi P2P langsung bisa gagal tanpa server TURN. Isi kredensial TURN agar relay tetap tersedia.</p>
+    <div class="pilot-fields">
+      <label for="turn-url">URL TURN</label>
+      <input id="turn-url" type="text" autocomplete="off" spellcheck="false" placeholder="turns:global.relay.metered.ca:443?transport=tcp" />
+      <small class="field-hint">Boleh beberapa URL dipisah koma/baris baru. Gunakan <b>turns:</b> port 443 untuk firewall ketat.</small>
+      <label for="turn-user">Username TURN</label>
+      <input id="turn-user" type="text" autocomplete="off" spellcheck="false" />
+      <label for="turn-cred">Credential TURN</label>
+      <input id="turn-cred" type="password" autocomplete="off" spellcheck="false" />
+      <small class="field-hint">Kredensial disimpan sementara di sessionStorage tab ini, tidak di repo. Jangan pakai akun bersama.</small>
+      <div id="turn-status" class="lobby-note" aria-live="polite">Belum ada TURN. Isi jika muncul peringatan NAT ketat.</div>
+    </div>
+    <p class="small">Butuh TURN gratis? Buat credential di <a href="https://www.metered.ca/tools/openrelay/" target="_blank" rel="noopener">Metered Open Relay</a>, lalu salin URL, username, dan credential dari ICE servers array. Kedua pemain sebaiknya memakai TURN.</p>
+    <div class="net-actions">
+      <button id="turn-test">🔎 Tes TURN</button>
+      <button id="turn-save">💾 Simpan</button>
+      <button id="turn-close">Tutup</button>
+    </div>
   </div>
 </div>
 

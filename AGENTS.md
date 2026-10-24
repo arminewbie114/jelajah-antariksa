@@ -54,5 +54,6 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Sanitasi semua input peer: nama, `rocketId` (harus ada di `builders`), posisi finite ±2600, pitch ±1.5; snapshot/ID/index divalidasi sebelum diterapkan.
 - Saat dispose remote ship jangan dispose texture builder yang di-cache (Garuda); cukup geometry/material dan texture name tag milik sprite remote.
 - `addRocketLights(target, withEngineLight)` harus tetap mendukung target model remote; nama grup `navLights`, `flame`, `engineHalo`, `strobe`, `engineLight` dipertahankan.
-- Keterbatasan yang sudah disepakati: tanpa TURN/NAT traversal bantuan, tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
+- NAT ketat: TURN **opsional** lewat modal ⚙️ Jaringan & TURN (URL/username/credential), diteruskan ke `startMultiplayer({turnConfig})` lalu `config.turnConfig` Trystero. Jangan hardcode kredensial TURN di repo; simpan hanya di `sessionStorage` tab. Tanpa TURN, koneksi langsung/STUN bisa gagal.
+- Keterbatasan yang sudah disepakati: tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
 - Jangan `await` koneksi Trystero sebelum splash ditutup/pointer lock agar gesture audio tetap valid; mulai koneksi async setelah launch.

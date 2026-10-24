@@ -22,7 +22,8 @@ Atau pakai ekstensi *Live Server* di VS Code.
 - **Warp global:** host mengatur waktu dunia `1× / 10× / 100×`; tombol warp pemain lain dinonaktifkan agar semua orbit tetap sama. Autopilot di multiplayer mengikuti warp host (offline tetap otomatis 1×).
 - **Host migration:** jika host keluar, pemain tersisa memilih host baru dan melanjutkan state dunia terakhir. Progres kunjungan `S.visited` tetap **personal** tiap pemain.
 - Kapal pemain lain tetap visual (belum ada PvP/chat). Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. State pesawat dikirim ±10×/detik.
-- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi WebRTC bisa gagal di NAT ketat/jaringan seluler karena tidak memakai TURN server.
+- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi WebRTC bisa gagal di NAT ketat/jaringan seluler; jika muncul peringatan NAT ketat, buka **⚙️ Jaringan & TURN** (tombol di splash/HUD) lalu isi URL + username + credential TURN, mis. dari [Metered Open Relay](https://www.metered.ca/tools/openrelay/). Klik **🔎 Tes TURN** untuk memastikan relay menghasilkan kandidat relay, lalu **Simpan** dan luncurkan ulang. Kedua pemain sebaiknya memakai TURN.
+- Kredensial TURN hanya disimpan di `sessionStorage` tab, tidak pernah masuk repo. Tanpa TURN, koneksi langsung/STUN tetap dicoba lebih dulu.
 - Jika CDN/relay tidak tersedia, game tetap bisa dimainkan **offline** setelah nama diisi.
 
 ## Kontrol
