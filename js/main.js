@@ -522,7 +522,7 @@ camera.position.set(0,1.6,1);
 shipGroup.add(camera);
 
 /* ============ STATE + KONTROL FPS ============ */
-const S = { playing:false, cockpit:true, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
+const S = { playing:false, cockpit:false, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
   boost:false, warpDrive:false, timeWarp:1, target:null, follow:null, visited:new Set(), rocketId:'nsx-vanguard',
   sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null };
 const keys={};
@@ -1252,5 +1252,5 @@ function updateVisited(){ const n=[...S.visited].filter(id=>PLANETS.some(p=>p.id
   if(n===8)toast('🏆 MISI SELESAI! Kamu mengunjungi 8 planet!'); }
 renderPlanetList();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-camera.position.set(0,1.6,1);
+camera.position.set(0,2.4,5.5);
 animate();

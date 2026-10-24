@@ -28,6 +28,7 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 ## Batasan desain yang harus dijaga
 - Skala semi-realistis playable; pesawat `SHIP_SCALE=0.15` (lebih besar dari Bulan di game).
 - Kecepatan tampilan HUD dinormalisasi: `WORLD_MAX=650` → `SPEED_MAX=4000 km/dtk`. Default tanpa boost = **50 km/dtk** (world 8,125); boost 800; warp penuh 4000.
+- Kamera default **Free-Fly FPS** (chase di belakang-atas); `C` beralih ke Kokpit Imersif.
 - Pesawat futuristik **bersayap** (bukan roket), **dominan putih** dengan aksen menyala: Vanguard (delta), Odyssey (sayap lebar/katamaran), Aurora (forward-swept + panel emas).
 - Mobile: dua stik analog — kiri gerak (atas maju, bawah mundur, kiri/kanan strafe), kanan mengarahkan (atas/bawah pitch, kiri/kanan yaw).
 - Autopilot/ikuti: tanpa batas kecepatan maksimum, warp waktu dikunci 1×, parkir di sisi siang planet, tombol `E` toggle panel.
