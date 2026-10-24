@@ -687,7 +687,7 @@ function animate(){
       acc.addScaledVector(fwd,-joy.y);    // stik kiri: atas = maju, bawah = mundur
       if(document.getElementById('m-thrust')?.classList.contains('on'))acc.add(fwd);
       const thrusting=acc.lengthSq()>0.01;
-      let max=16.25; // default tanpa boost = 100 km/dtk di HUD
+      let max=8.125; // default tanpa boost = 50 km/dtk di HUD
       if(keys.ShiftLeft||keys.ShiftRight||S.boost)max=130; if(S.warpDrive)max=650;
       if(thrusting&&S.fuel>0){
         // joystick analog: dorongan ikut seberapa jauh tuas digeser (kontrol halus)
