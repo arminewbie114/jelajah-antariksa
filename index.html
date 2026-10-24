@@ -22,6 +22,7 @@
     <span id="hud-speed">0 km/dtk</span>
     <span id="hud-target">🎯 —</span>
     <span id="hud-visited">🪐 0/8</span>
+    <span id="hud-players" title="Pemain online">👥 1</span>
     <span id="hud-fps">60 FPS</span>
   </div>
   <div class="hud-btns">
@@ -110,6 +111,15 @@
   <div class="splash-card">
     <h1>🚀 Nusantara Space Explorer</h1>
     <p>Jelajahi <b>8 planet + Pluto, Bulan, 3 eksoplanet, inti Bima Sakti & 5 galaksi lain</b> dengan <b>pesawat futuristik</b> dalam <b>3D First-Person</b>. Kecepatan maks <b>4000 km/dtk</b>. Data mengacu <b>NASA</b>.</p>
+    <div class="pilot-fields">
+      <label for="player-name">Nama Pilot <span class="req">*</span></label>
+      <input id="player-name" name="pilot" type="text" maxlength="16" autocomplete="nickname" placeholder="Contoh: Garuda-01" />
+      <small class="field-hint">2–16 karakter · huruf, angka, spasi, _ - .</small>
+      <label for="room-code">Kode Ruangan <span class="optional">(opsional)</span></label>
+      <input id="room-code" name="room" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Kosong = ruang publik" />
+      <small class="field-hint">Isi kode yang sama agar bertemu teman. Tanpa kode = ruang publik.</small>
+      <div id="mp-status" class="lobby-note" aria-live="polite">Isi nama pilot dulu untuk bisa meluncur.</div>
+    </div>
     <label>Pilih Pesawatmu:</label>
     <div id="rocket-select"></div>
     <div id="rocket-spec"></div>
@@ -118,8 +128,8 @@
       <button data-mode="cockpit">🪟 Kokpit Imersif</button>
       <button data-mode="freefly" class="active">🎥 Free-Fly FPS</button>
     </div>
-    <button id="btn-launch">🛫 LEPAS LANDAS</button>
-    <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse), <b>F/Klik kiri</b> = laser · HP: stik kiri = gerak, stik kanan = arahkan, tombol <b>⚡</b> = tembak.<br/>Klik planet / dekati planet untuk panel info Indonesia.</p>
+    <button id="btn-launch" disabled>🛫 LEPAS LANDAS</button>
+    <p class="small">Desktop: WASD + Mouse (klik untuk kunci mouse), <b>F/Klik kiri</b> = laser · HP: stik kiri = gerak, stik kanan = arahkan, tombol <b>⚡</b> = tembak.<br/>Multiplayer P2P: pemain dengan ruangan sama akan terlihat sebagai pesawat bernama. Klik planet / dekati planet untuk panel info Indonesia.</p>
   </div>
 </div>
 
@@ -134,6 +144,7 @@
       <li>Kecepatan jelajah <b>50 km/dtk</b> (boost 800, warp penuh 4000). Jelajah hingga orbit 430 untuk <b>lubang hitam Cygnus X-1</b> — awas gravitasinya menyedot pesawat!</li>
       <li>Dekati planet sampai muncul prompt, checklist 8/8 untuk menamatkan misi. Jelajahi juga <b>objek Bima Sakti</b> (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan <b>galaksi lain</b> (Andromeda, Triangulum, LMC, Whirlpool, Sombrero) lewat autopilot.</li>
       <li>Skala: diameter proporsional akurat, jarak dikompresi + warp agar playable. Bukan 1:1 mentah. Jarak asli tetap dicantumkan di panel info.</li>
+      <li><b>Multiplayer P2P</b>: isi nama sebelum meluncur. Pemain lain di ruangan yang sama terlihat sebagai pesawat + nama. Kosongkan kode ruangan untuk ruang publik, atau bagikan kode agar bermain dengan teman. Belum ada PvP/chat; koneksi bisa gagal di jaringan NAT ketat.</li>
     </ul>
     <button id="help-close">Tutup</button>
   </div>

@@ -16,14 +16,15 @@
 Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + importmap, tanpa build tool).
 - `index.html` — splash, HUD, panel info, peta, kontrol mobile.
 - `js/dataPlanets.js` — data NASA planet, eksoplanet, Bima Sakti (MILKYWAY), galaksi lain (GALAXIES), pesawat NSX.
-- `js/main.js` — scene, orbit, pesawat bersayap, kontrol FPS/touch, autopilot, minimap, audio.
+- `js/main.js` — scene, orbit, pesawat bersayap, kontrol FPS/touch, autopilot, minimap, audio, remote player.
+- `js/multiplayer.js` — Trystero P2P, sanitasi nama/room, presence state.
 - `css/style.css` — styling.
 
 ## Menjalankan & verifikasi
 - Serve via HTTP (jangan `file://`): `python3 -m http.server 8080 --bind 0.0.0.0`
 - Cek server: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/index.html`
-- Cek sintaks (Node Windows): salin `js/main.js` ke `_check.mjs` lalu
-  `/mnt/c/nvm4w/nodejs/node.exe --check _check.mjs` (hapus file setelahnya).
+- Cek sintaks (Node Windows, dari folder repo):
+  `/mnt/c/nvm4w/nodejs/node.exe --check js/main.js && /mnt/c/nvm4w/nodejs/node.exe --check js/multiplayer.js`
 
 ## Batasan desain yang harus dijaga
 - Skala semi-realistis playable; pesawat `SHIP_SCALE=0.15` (lebih besar dari Bulan di game).
@@ -36,3 +37,15 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Eksoplanet: periode orbit asli di data, visual orbit diperlambat 15× (`lambat:15`).
 - Objek Bima Sakti & galaksi: posisi statis (`fixed:true`), punya `nearRadius`, `hoverRadius`, `arriveRadius`, dan `info`; autopilot parkir di `hoverRadius`, batas dunia 2000 unit.
 - Daftar autopilot dikelompokkan: Tata Surya / Eksoplanet / Bima Sakti / Galaksi Lain.
+
+## Multiplayer P2P (Trystero)
+- Nama pilot **wajib** 2–16 karakter sebelum launch; kode ruangan opsional (minimal 3 karakter, huruf/angka/tanda hubung). Nama/room disimpan di `localStorage`.
+- Room publik `nusantara-public-v1`; room privat `nusantara-room-v1-${code}` + password `nse-room:${code}`; `appId` `nusantara-space-explorer-v1`.
+- CDN dipin: `https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm` (default Nostr). Import dilakukan dinamis agar launch tidak diblokir dan tetap bisa offline.
+- State presence (`ship`) berisi nama, `rocketId`, posisi, yaw, pitch, speed; kirim ±10 Hz dan target langsung saat peer join.
+- Remote player hanya visual: jangan menambahkan PvP/chat tanpa diminta. Jangan membuat `PointLight` engine untuk remote (performa).
+- Sanitasi semua input peer: nama, `rocketId` (harus ada di `builders`), posisi finite ±2600, pitch ±1.5.
+- Saat dispose remote ship jangan dispose texture builder yang di-cache (Garuda); cukup geometry/material dan texture name tag milik sprite remote.
+- `addRocketLights(target, withEngineLight)` harus tetap mendukung target model remote; nama grup `navLights`, `flame`, `engineHalo`, `strobe`, `engineLight` dipertahankan.
+- Keterbatasan yang sudah disepakati: tanpa TURN/NAT traversal bantuan, tanpa server otoritatif/anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
+- Jangan `await` koneksi Trystero sebelum splash ditutup/pointer lock agar gesture audio tetap valid; mulai koneksi async setelah launch.

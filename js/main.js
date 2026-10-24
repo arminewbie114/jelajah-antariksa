@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PLANETS, BONUS, ROCKETS, SUN, EXOPLANETS, MILKYWAY, GALAXIES, BLACKHOLE } from './dataPlanets.js';
+import { startMultiplayer, sanitizePilotName, normalizeRoomCode } from './multiplayer.js';
 
 /* ============ SETUP ============ */
 const canvas = document.getElementById('scene');
@@ -639,9 +640,9 @@ function buildGaruda(){
 const builders={ 'nsx-vanguard':buildVanguard, 'nsx-odyssey':buildOdyssey, 'nsx-aurora':buildAurora, 'nsx-garuda':buildGaruda };
 
 /* Lampu navigasi + cahaya mesin agar pesawat jelas terlihat dalam gelap */
-function addRocketLights(){
-  if(rocketMesh.getObjectByName('navLights')) return;
-  const L=rocketMesh.userData.lights||{navX:0.7,navY:4.2,navZ:0,strobeY:8.6,engineY:-2.2};
+function addRocketLights(target=rocketMesh,withEngineLight=true){
+  if(target.getObjectByName('navLights')) return;
+  const L=target.userData.lights||{navX:0.7,navY:4.2,navZ:0,strobeY:8.6,engineY:-2.2};
   const grp=new THREE.Group(); grp.name='navLights';
   const mk=(color,x)=>{
     const s=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),
@@ -652,8 +653,10 @@ function addRocketLights(){
   const strobe=new THREE.Mesh(new THREE.SphereGeometry(0.09,10,10),
     new THREE.MeshBasicMaterial({color:0xffffff}));
   strobe.position.set(0,L.strobeY,0.2); strobe.name='strobe'; grp.add(strobe);
-  const engine=new THREE.PointLight(0x66aaff,0,25); engine.position.set(0,L.engineY,0); engine.name='engineLight'; grp.add(engine);
-  rocketMesh.add(grp);
+  if(withEngineLight){
+    const engine=new THREE.PointLight(0x66aaff,0,25); engine.position.set(0,L.engineY,0); engine.name='engineLight'; grp.add(engine);
+  }
+  target.add(grp);
 }
 
 const shipGroup = new THREE.Group(); scene.add(shipGroup);
@@ -674,7 +677,8 @@ shipGroup.add(camera);
 /* ============ STATE + KONTROL FPS ============ */
 const S = { playing:false, cockpit:false, yaw:Math.PI, pitch:0, vel:new THREE.Vector3(), fuel:100,
   boost:false, warpDrive:false, timeWarp:1, target:null, follow:null, visited:new Set(), rocketId:'nsx-vanguard',
-  sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null };
+  sound:true, paused:false, nearBody:null, firing:false, laserCd:0, aimScanT:0, aimTarget:null,
+  playerName:'', roomCode:'' };
 const keys={};
 addEventListener('keydown',e=>{
   keys[e.code]=true;
@@ -764,6 +768,258 @@ function setRocket(id){
   const r=ROCKETS.find(x=>x.id===id); $('rocket-spec').textContent=`${r.name} · ${r.asal} · Panjang ${r.tinggiM} · Penggerak ${r.thrust} — ${r.desc}`;
   toast(`🛸 Pesawat: ${r.name}`);
 }
+
+const remotePlayers=new Map();
+let net=null;
+let netAccum=0;
+let mpStatus='idle';
+const _netCamPos=new THREE.Vector3();
+const _netEuler=new THREE.Euler(0,0,0,'YXZ');
+
+function makeRemoteNameTag(name){
+  const c=document.createElement('canvas'); c.width=512; c.height=128;
+  const g=c.getContext('2d');
+  const text=Array.from(name).slice(0,16).join('');
+  let size=48;
+  g.font=`700 ${size}px sans-serif`;
+  while(g.measureText(text).width>390&&size>20){ size-=2; g.font=`700 ${size}px sans-serif`; }
+  g.fillStyle='rgba(4,12,26,.78)';
+  if(typeof g.roundRect==='function'){
+    g.beginPath(); g.roundRect(24,22,464,84,24); g.fill();
+  } else {
+    g.fillRect(24,22,464,84);
+  }
+  g.strokeStyle='rgba(56,225,255,.7)'; g.lineWidth=4;
+  if(typeof g.roundRect==='function'){
+    g.beginPath(); g.roundRect(24,22,464,84,24); g.stroke();
+  } else {
+    g.strokeRect(24,22,464,84);
+  }
+  g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#f4fbff';
+  g.fillText(text,256,64);
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+  sp.userData.remoteLabel=true; sp.renderOrder=4;
+  return sp;
+}
+
+function disposeRemoteObject(root){
+  root.traverse(o=>{
+    if(o.isMesh){
+      o.geometry?.dispose();
+      const mats=Array.isArray(o.material)?o.material:[o.material];
+      mats.forEach(m=>m?.dispose?.());
+    } else if(o.isSprite){
+      if(o.userData.remoteLabel)o.material?.map?.dispose?.();
+      o.material?.dispose?.();
+    }
+  });
+}
+
+function setRemoteModel(p,rocketId){
+  if(p.rocketId===rocketId&&p.model)return;
+  if(p.model){
+    p.group.remove(p.model);
+    disposeRemoteObject(p.model);
+  }
+  if(!builders[rocketId])rocketId='nsx-vanguard';
+  const model=builders[rocketId]();
+  model.position.set(0,-1.0,-1.8);
+  model.rotation.x=-Math.PI/2;
+  model.scale.setScalar(SHIP_SCALE);
+  addRocketLights(model,false);
+  const flame=model.getObjectByName('flame'); if(flame)flame.visible=false;
+  const halo=model.getObjectByName('engineHalo'); if(halo)halo.visible=false;
+  p.model=model; p.rocketId=rocketId; p.group.add(model);
+}
+
+function setRemoteName(p,name){
+  if(p.name===name&&p.label)return;
+  if(p.label){
+    scene.remove(p.label);
+    disposeRemoteObject(p.label);
+  }
+  p.name=name;
+  p.label=makeRemoteNameTag(name);
+  p.label.visible=false;
+  scene.add(p.label);
+}
+
+function ensureRemotePlayer(peerId){
+  let p=remotePlayers.get(peerId);
+  if(p)return p;
+  const group=new THREE.Group(); group.name='remote-'+peerId;
+  scene.add(group);
+  p={
+    id:peerId, group, model:null, label:null, rocketId:'', name:'',
+    targetPos:new THREE.Vector3(), targetQuat:new THREE.Quaternion(),
+    speed:0, lastSeen:performance.now()
+  };
+  remotePlayers.set(peerId,p);
+  updateOnlineUI();
+  return p;
+}
+
+function applyPeerState(peerId,data){
+  if(typeof peerId!=='string'||!data||typeof data!=='object')return;
+  const pos=Array.isArray(data.p)?data.p:null;
+  if(!pos||pos.length<3)return;
+  const x=Number(pos[0]), y=Number(pos[1]), z=Number(pos[2]);
+  const yaw=Number(data.y), pitch=Number(data.pi), speed=Number(data.v);
+  if(![x,y,z,yaw,pitch].every(Number.isFinite))return;
+  if(Math.abs(x)>2600||Math.abs(y)>2600||Math.abs(z)>2600)return;
+  const name=sanitizePilotName(data.n)||'Pilot';
+  const rocketId=typeof data.r==='string'&&builders[data.r]?data.r:'nsx-vanguard';
+  const isNew=!remotePlayers.has(peerId);
+  const p=ensureRemotePlayer(peerId);
+  p.targetPos.set(x,y,z);
+  p.targetQuat.setFromEuler(_netEuler.set(THREE.MathUtils.clamp(pitch,-1.5,1.5),yaw,0,'YXZ'));
+  p.speed=Number.isFinite(speed)?THREE.MathUtils.clamp(speed,0,1000):0;
+  p.lastSeen=performance.now();
+  setRemoteModel(p,rocketId);
+  if(p.name!==name)setRemoteName(p,name);
+  if(isNew){
+    p.group.position.copy(p.targetPos);
+    p.group.quaternion.copy(p.targetQuat);
+    toast(`🛸 ${name} bergabung`,3200);
+  }
+  updateOnlineUI();
+}
+
+function removeRemotePlayer(peerId,quiet=false){
+  const p=remotePlayers.get(peerId);
+  if(!p)return;
+  scene.remove(p.group);
+  disposeRemoteObject(p.group);
+  if(p.label){
+    scene.remove(p.label);
+    disposeRemoteObject(p.label);
+  }
+  remotePlayers.delete(peerId);
+  updateOnlineUI();
+  if(!quiet&&p.name)toast(`👋 ${p.name} keluar`,2600);
+}
+
+function updateRemotePlayers(dt){
+  camera.getWorldPosition(_netCamPos);
+  const now=performance.now();
+  for(const [peerId,p] of remotePlayers){
+    if(now-p.lastSeen>15000){ removeRemotePlayer(peerId,true); continue; }
+    const distance=p.group.position.distanceTo(p.targetPos);
+    if(distance>80){
+      p.group.position.copy(p.targetPos);
+      p.group.quaternion.copy(p.targetQuat);
+    } else {
+      const k=1-Math.exp(-dt*12);
+      p.group.position.lerp(p.targetPos,k);
+      p.group.quaternion.slerp(p.targetQuat,k);
+    }
+    const flame=p.model?.getObjectByName('flame');
+    const moving=p.speed>1.2;
+    if(flame){
+      flame.visible=moving;
+      if(moving)flame.scale.setScalar(0.85+Math.random()*0.35);
+    }
+    const halo=p.model?.getObjectByName('engineHalo'); if(halo)halo.visible=moving;
+    const strobe=p.model?.getObjectByName('strobe'); if(strobe)strobe.visible=(now%1000)<120;
+    if(p.label){
+      const camDist=_netCamPos.distanceTo(p.group.position);
+      const s=THREE.MathUtils.clamp(camDist*0.22,1.3,22);
+      p.label.position.copy(p.group.position); p.label.position.y+=1.2;
+      p.label.scale.set(s,s*0.25,1);
+      p.label.visible=camDist<700;
+    }
+  }
+}
+
+function updateOnlineUI(){
+  const count=remotePlayers.size+1;
+  const hud=$('hud-players'); if(hud)hud.textContent=`👥 ${count}`;
+  const note=$('mp-status'); if(!note)return;
+  note.className='lobby-note';
+  if(mpStatus==='online'&&net){
+    const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
+    note.classList.add('online');
+    note.textContent=`🌐 Online · ${room} · ${count} pemain`;
+  } else if(mpStatus==='connecting'){
+    note.textContent='🌐 Menghubungkan ke ruang P2P...';
+  } else if(mpStatus==='offline'){
+    note.classList.add('offline');
+    note.textContent='⚠️ Multiplayer tidak tersedia — melanjutkan mode offline.';
+  }
+}
+
+function refreshLobbyState(){
+  const nameInput=$('player-name'), roomInput=$('room-code'), btn=$('btn-launch'), note=$('mp-status');
+  if(!nameInput||!roomInput||!btn)return;
+  const name=sanitizePilotName(nameInput.value);
+  const rawRoom=roomInput.value.trim();
+  const room=normalizeRoomCode(rawRoom);
+  const roomBad=!!rawRoom&&room.length<3;
+  btn.disabled=name.length<2||roomBad;
+  if(mpStatus!=='idle'||!note)return;
+  note.className='lobby-note';
+  if(name.length<2){
+    note.textContent='Isi nama pilot dulu (2–16 karakter) untuk bisa meluncur.';
+  } else if(roomBad){
+    note.classList.add('offline');
+    note.textContent='Kode ruangan minimal 3 karakter (huruf/angka).';
+  } else {
+    note.classList.add('online');
+    note.textContent=room?`Siap meluncur · ruang ${room}`:'Siap meluncur · ruang publik';
+  }
+}
+
+function applySpawnOffset(){
+  let seed;
+  try{
+    const buf=new Uint32Array(1); crypto.getRandomValues(buf); seed=buf[0];
+  }catch{ seed=Math.floor(Math.random()*4294967295); }
+  const angle=(seed%360)*Math.PI/180;
+  const radius=3+((seed>>>9)%4);
+  shipGroup.position.x+=Math.cos(angle)*radius;
+  shipGroup.position.z+=Math.sin(angle)*radius;
+}
+
+function localNetState(){
+  return {
+    n:S.playerName,
+    r:S.rocketId,
+    p:[+shipGroup.position.x.toFixed(2),+shipGroup.position.y.toFixed(2),+shipGroup.position.z.toFixed(2)],
+    y:+S.yaw.toFixed(3),
+    pi:+S.pitch.toFixed(3),
+    v:+S.vel.length().toFixed(2)
+  };
+}
+
+function beginMultiplayer(){
+  mpStatus='connecting';
+  updateOnlineUI();
+  startMultiplayer({
+    roomCode:S.roomCode,
+    getLocalState:localNetState,
+    onState:applyPeerState,
+    onPeerJoin:()=>updateOnlineUI(),
+    onPeerLeave:peerId=>{ removeRemotePlayer(peerId); updateOnlineUI(); },
+    onJoinError:()=>toast('⚠️ Gagal tersambung ke salah satu pemain — kemungkinan NAT ketat.',4200)
+  }).then(mp=>{
+    if(!mp){
+      mpStatus='offline';
+      updateOnlineUI();
+      toast('⚠️ Multiplayer tidak tersedia — mode offline aktif.',3600);
+      return;
+    }
+    net=mp;
+    mpStatus='online';
+    updateOnlineUI();
+    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
+  }).catch(()=>{
+    mpStatus='offline';
+    updateOnlineUI();
+    toast('⚠️ Multiplayer tidak tersedia — mode offline aktif.',3600);
+  });
+}
+
 // daftar roket splash
 ROCKETS.forEach((r,i)=>{
   const b=document.createElement('button'); b.dataset.r=r.id; b.innerHTML=`<b>${r.name}</b><br/><small>${r.asal}<br/>${r.tinggiM}</small>`;
@@ -799,10 +1055,40 @@ $('panel-close').onclick=closePanel;
 $('pp-refuel').onclick=refuel;
 $('pp-warp').onclick=()=>{ if(S.nearBody){ flyTo(S.nearBody.data.id); } };
 $('btn-stop-nav').onclick=()=>{S.target=null;S.follow=null;restoreWarp();renderPlanetList();toast('Autopilot / mode ikuti dimatikan');};
+{
+  const nameInput=$('player-name'), roomInput=$('room-code');
+  try{
+    nameInput.value=localStorage.getItem('nse.pilotName')||'';
+    roomInput.value=localStorage.getItem('nse.roomCode')||'';
+  }catch{}
+  nameInput.addEventListener('input',refreshLobbyState);
+  roomInput.addEventListener('input',refreshLobbyState);
+  refreshLobbyState();
+}
+addEventListener('pagehide',()=>{ net?.leave(); net=null; });
 $('btn-launch').onclick=()=>{
-  S.playing=true; $('splash').style.display='none'; initAudio(); AC?.resume();
-  toast('🛫 Lepas landas! Dekati objek langit untuk info · M untuk autopilot');
+  if(S.playing)return;
+  const name=sanitizePilotName($('player-name').value);
+  const rawRoom=$('room-code').value.trim();
+  const roomCode=normalizeRoomCode(rawRoom);
+  if(name.length<2||(rawRoom&&roomCode.length<3)){
+    refreshLobbyState();
+    toast('⚠️ Isi nama pilot (2–16 karakter) dan kode ruangan yang valid.',3600);
+    return;
+  }
+  S.playerName=name;
+  S.roomCode=roomCode;
+  try{
+    localStorage.setItem('nse.pilotName',name);
+    localStorage.setItem('nse.roomCode',roomCode);
+  }catch{}
+  S.playing=true;
+  applySpawnOffset();
+  $('splash').style.display='none';
+  initAudio(); AC?.resume();
   canvas.requestPointerLock?.();
+  toast(`🛫 Lepas landas, ${name}! Dekati objek langit untuk info · M untuk autopilot`);
+  beginMultiplayer();
 };
 // daftar tujuan autopilot, dikelompokkan per wilayah
 function bodyCategory(b){
@@ -1194,6 +1480,11 @@ function animate(){
   sunMesh.rotation.y+=dt*0.02;
   bhDisk.rotation.z+=dt*0.5; photon.rotation.z-=dt*0.25; // cakram akresi berputar
   updateEffects(dt);
+  if(net&&S.playing){
+    netAccum+=dt;
+    if(netAccum>=0.1){ netAccum=0; net.sendState(); }
+  }
+  updateRemotePlayers(dt);
 
   if(S.playing && !S.paused){
     // stik kanan: arahkan kapal (analog, kecepatan putar halus)
