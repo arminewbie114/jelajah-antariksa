@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PLANETS, BONUS, ROCKETS, SUN, EXOPLANETS, MILKYWAY, GALAXIES, BLACKHOLE } from './dataPlanets.js';
-import { startMultiplayer, sanitizePilotName, normalizeRoomCode } from './multiplayer.js';
-import { fetchTurnIceServers } from './turn.js';
+import { startMultiplayer } from './net.js';
+import { ASTEROID_COUNT, sanitizePilotName, normalizeRoomCode } from './net-utils.js';
 
 /* ============ SETUP ============ */
 const canvas = document.getElementById('scene');
@@ -216,7 +216,7 @@ bodies.push(bhBody);
 
 /* Sabuk asteroid Mars–Jupiter (InstancedMesh 3000) — bisa ditembak & dihancurkan */
 const asteroidField=(()=>{
-  const COUNT=3000, geo=new THREE.DodecahedronGeometry(0.22);
+  const COUNT=ASTEROID_COUNT, geo=new THREE.DodecahedronGeometry(0.22);
   const mat=new THREE.MeshStandardMaterial({color:0x8a7f70,roughness:1});
   const mesh=new THREE.InstancedMesh(geo,mat,COUNT);
   const dummy=new THREE.Object3D();
@@ -811,9 +811,10 @@ function setWorldClock(base,at,warp){
 }
 function updateWorldControls(){
   const host=isWorldHost();
+  const label=net?.isServer?'controller':'host dunia';
   document.querySelectorAll('.warp-btn').forEach(b=>{
     b.disabled=!host;
-    b.title=host?'Atur kecepatan waktu dunia':'Host dunia yang mengatur kecepatan waktu';
+    b.title=host?'Atur kecepatan waktu dunia':`${label} yang mengatur kecepatan waktu`;
   });
 }
 function adoptWorldHost(id,announce=false){
@@ -837,7 +838,7 @@ function hostClaimWins(seq,hostId){
   return hostId<net.selfId;
 }
 function becomeWorldHost(){
-  if(!net||worldNet.selfHost)return;
+  if(!net||net.isServer||worldNet.selfHost)return;
   worldTime=currentWorldTime();
   worldNet.hostId=net.selfId;
   worldNet.selfHost=true;
@@ -853,7 +854,7 @@ function becomeWorldHost(){
   toast('👑 Kamu host dunia — posisi, HP, dan waktu orbit tersinkron.',3600);
 }
 function maybeClaimWorldHost(){
-  if(!net||mpStatus!=='online')return;
+  if(!net||net.isServer||mpStatus!=='online')return;
   const now=performance.now();
   if(worldNet.hostId&&now-worldNet.hostSeenAt<WORLD_HOST_TIMEOUT_MS)return;
   if(worldNet.hostId){
@@ -868,7 +869,7 @@ function maybeClaimWorldHost(){
   if(ids[0]===net.selfId)becomeWorldHost();
 }
 function startWorldElection(){
-  if(!net)return;
+  if(!net||net.isServer)return;
   if(worldNet.electionTimer)clearInterval(worldNet.electionTimer);
   setTimeout(maybeClaimWorldHost,600);
   worldNet.electionTimer=setInterval(maybeClaimWorldHost,1500);
@@ -914,14 +915,14 @@ function buildWorldSnapshot(){
   };
 }
 function broadcastWorldSnapshot(targetId){
-  if(!net||!worldNet.selfHost)return;
+  if(!net||net.isServer||!worldNet.selfHost)return;
   worldNet.hostSeenAt=performance.now();
   net.sendWorld(buildWorldSnapshot(),targetId);
 }
 function applyWorldSnapshot(msg){
   if(!net||!msg||msg.k!=='snap'||typeof msg.h!=='string'||!msg.h)return;
   if(msg.h!==worldNet.hostId){
-    if(worldNet.selfHost&&!hostClaimWins(msg.seq,msg.h))return;
+    if(!net.isServer&&worldNet.selfHost&&!hostClaimWins(msg.seq,msg.h))return;
     adoptWorldHost(msg.h);
   }
   if(!worldNet.selfHost)worldNet.hostSeenAt=performance.now();
@@ -964,11 +965,12 @@ function applyEntitySnapshot(ents){
   if(S.panelKey)refreshEntityPanel(S.panelKey);
 }
 function broadcastWorldEvent(event){
-  if(!net||!worldNet.selfHost)return;
+  if(!net||net.isServer||!worldNet.selfHost)return;
   net.sendWorld({...event,k:'ev',h:net.selfId});
 }
 function applyWorldEvent(msg){
-  if(!net||!worldNet.hostId||msg.h!==worldNet.hostId)return;
+  if(!net)return;
+  if(!net.isServer&&(!worldNet.hostId||msg.h!==worldNet.hostId))return;
   if(msg.kind==='respawn'&&typeof msg.id==='string'){
     const e=entityByDataId.get(msg.id);
     if(e&&e.destroyed)respawnEntity(e,{skipShipReposition:true});
@@ -996,6 +998,7 @@ function applyWorldEvent(msg){
 }
 function applyWorldMessage(peerId,msg){
   if(!msg||typeof msg!=='object')return;
+  if(net?.isServer&&!['snap','warp','ev'].includes(msg.k))return;
   if(msg.k==='hello'){
     if(worldNet.selfHost)sendSnapshotToPeer(peerId);
     return;
@@ -1015,13 +1018,13 @@ function applyWorldMessage(peerId,msg){
     applyWorldSnapshot(msg);
     return;
   }
-  if(msg.k==='warp'&&msg.h===worldNet.hostId){
+  if(msg.k==='warp'&&(net?.isServer||msg.h===worldNet.hostId)){
     const warp=[1,10,100].includes(Number(msg.warp))?Number(msg.warp):1;
     S.timeWarp=warp;
     document.querySelectorAll('.warp-btn').forEach(x=>x.classList.toggle('active',+x.dataset.warp===warp));
     const w=Number(msg.w);
     if(Number.isFinite(w))setWorldClock(w+worldNet.latency*warp,performance.now(),warp);
-    if(!worldNet.selfHost)toast(`⏱️ Host mengubah waktu menjadi ${warp}×`,2400);
+    if(!worldNet.selfHost)toast(`⏱️ ${net?.isServer?'Controller':'Host'} mengubah waktu menjadi ${warp}×`,2400);
     return;
   }
   if(msg.k==='ping'&&worldNet.selfHost){
@@ -1058,11 +1061,11 @@ function applyWorldMessage(peerId,msg){
   if(msg.k==='ev')applyWorldEvent(msg);
 }
 function sendSnapshotToPeer(peerId){
-  if(!net||!worldNet.selfHost||!peerId)return;
+  if(!net||net.isServer||!worldNet.selfHost||!peerId)return;
   net.sendWorld(buildWorldSnapshot(),peerId);
 }
 function sendWorldPing(){
-  if(!net||worldNet.selfHost||!worldNet.hostId)return;
+  if(!net||net.isServer||worldNet.selfHost||!worldNet.hostId)return;
   const now=performance.now();
   if(now-worldNet.lastPingAt<WORLD_PING_MS)return;
   worldNet.lastPingAt=now;
@@ -1238,12 +1241,14 @@ function updateOnlineUI(){
   note.className='lobby-note';
   if(mpStatus==='online'&&net){
     const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
-    const role=worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host');
-    const relay=net.usingTurn?' · relay':'';
+    const role=net.isServer
+      ? (worldNet.selfHost?' · 👑 controller':' · sinkron controller')
+      : (worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host'));
+    const relay=net.isServer?' · server':(net.usingTurn?' · relay':'');
     note.classList.add('online');
     note.textContent=`🌐 Online · ${room} · ${count} pemain${role}${relay}`;
   } else if(mpStatus==='connecting'){
-    note.textContent='🌐 Menghubungkan ke ruang P2P...';
+    note.textContent='🌐 Menghubungkan ke ruang multiplayer...';
   } else if(mpStatus==='offline'){
     note.classList.add('offline');
     note.textContent='⚠️ Multiplayer tidak tersedia — melanjutkan mode offline.';
@@ -1296,22 +1301,22 @@ function localNetState(){
 async function beginMultiplayer(){
   mpStatus='connecting';
   updateOnlineUI();
-  const turn=await fetchTurnIceServers();
-  if(turn.source==='error')toast('⚠️ Relay TURN tidak tersedia — mencoba STUN/direct.',4500);
   startMultiplayer({
     roomCode:S.roomCode,
-    turnConfig:turn.iceServers,
+    playerName:S.playerName,
     getLocalState:localNetState,
     onState:applyPeerState,
     onWorld:applyWorldMessage,
+    onTurnError:()=>toast('⚠️ Relay TURN tidak tersedia — mencoba STUN/direct.',4500),
+    onLatency:ms=>{ worldNet.latency=Math.min(0.5,Math.max(0.01,ms/2000)); },
     onPeerJoin:peerId=>{
       worldNet.lastPeerJoinAt=performance.now();
       updateOnlineUI();
-      if(worldNet.selfHost)sendSnapshotToPeer(peerId);
+      if(!net?.isServer&&worldNet.selfHost)sendSnapshotToPeer(peerId);
     },
     onPeerLeave:peerId=>{
       removeRemotePlayer(peerId);
-      if(peerId===worldNet.hostId){
+      if(!net?.isServer&&peerId===worldNet.hostId){
         worldNet.hostId=null;
         worldNet.selfHost=false;
         worldNet.clockReady=false;
@@ -1321,15 +1326,25 @@ async function beginMultiplayer(){
       }
       updateOnlineUI();
     },
+    onDisconnect:()=>{
+      for(const id of [...remotePlayers.keys()])removeRemotePlayer(id,true);
+      net=null;
+      mpStatus='offline';
+      updateOnlineUI();
+      toast('⚠️ Koneksi multiplayer terputus — mode offline aktif.',4200);
+    },
     onJoinError:details=>{
       const errorText=String(details?.error||'');
-      if(errorText)console.warn('[multiplayer] P2P join error:',errorText);
+      if(errorText)console.warn('[multiplayer] join error:',errorText);
+      if(details?.mode==='server'){
+        toast(`⚠️ ${errorText||'Server multiplayer tidak tersedia.'}`,6500);
+        return;
+      }
       if(/incorrect room password/i.test(errorText)){
         toast('⚠️ Kode/password ruangan tidak cocok dengan pemain lain. Samakan kode ruangan.',6500);
         return;
       }
-      const relayHint=turn.iceServers.length?'Relay TURN aktif — coba ulang.':'Relay TURN tidak aktif.';
-      toast(`⚠️ Koneksi P2P gagal. ${relayHint} Coba jaringan lain.`,6500);
+      toast('⚠️ Koneksi P2P gagal. Coba jaringan lain atau gunakan server VPS.',6500);
     }
   }).then(mp=>{
     if(!mp){
@@ -1341,13 +1356,17 @@ async function beginMultiplayer(){
     net=mp;
     mpStatus='online';
     updateOnlineUI();
-    net.sendWorld({k:'hello'});
-    startWorldElection();
-    toast(`🌐 Online · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
-  }).catch(()=>{
+    if(!mp.isServer){
+      net.sendWorld({k:'hello'});
+      startWorldElection();
+    }
+    const mode=mp.isServer?'server':'P2P';
+    toast(`🌐 Online ${mode} · ${mp.isPublic?'ruang publik':'ruang '+mp.roomCode} · ${mp.getPeerCount()+1} pemain`,3600);
+  }).catch(error=>{
     mpStatus='offline';
     updateOnlineUI();
-    toast('⚠️ Multiplayer tidak tersedia — mode offline aktif.',3600);
+    const message=String(error?.message||'').trim();
+    toast(`⚠️ ${message||'Multiplayer tidak tersedia — mode offline aktif.'}`,4200);
   });
 }
 
@@ -1363,21 +1382,25 @@ $('m-thrust').onclick=()=>{S.boost=!S.boost;toast(S.boost?'⚡ Boost ON':'Boost 
 $('m-info').onclick=showNearestInfo;
 document.querySelectorAll('.warp-btn').forEach(b=>b.onclick=()=>{
   if(S.target||S.follow){ toast('⏳ Warp waktu dikunci selama autopilot/mode ikuti (agar rendezvous presisi)'); return; }
-  if(net&&!isWorldHost()){ toast('👑 Host dunia yang mengatur kecepatan waktu.'); return; }
+  if(net&&!isWorldHost()){ toast(`👑 ${net.isServer?'Controller':'Host dunia'} yang mengatur kecepatan waktu.`); return; }
   setTimeWarp(+b.dataset.warp); });
 function applyWarpUI(w){
   document.querySelectorAll('.warp-btn').forEach(x=>x.classList.toggle('active',+x.dataset.warp===w));
 }
 function setTimeWarp(w,options={}){
-  if(net&&!isWorldHost()&&!options.remote){ toast('👑 Host dunia yang mengatur kecepatan waktu.'); return; }
+  if(net&&!isWorldHost()&&!options.remote){ toast(`👑 ${net.isServer?'Controller':'Host dunia'} yang mengatur kecepatan waktu.`); return; }
   const base=currentWorldTime(), now=performance.now();
   S.timeWarp=w;
   applyWarpUI(w);
   if(net&&worldNet.selfHost&&!options.remote){
     worldTime=base;
     setWorldClock(base,now,w);
-    net.sendWorld({k:'warp',h:net.selfId,w:+base.toFixed(3),warp:w});
-    broadcastWorldSnapshot();
+    if(net.isServer){
+      net.sendWorld({k:'warp',warp:w});
+    } else {
+      net.sendWorld({k:'warp',h:net.selfId,w:+base.toFixed(3),warp:w});
+      broadcastWorldSnapshot();
+    }
   }
 }
 function restoreWarp(){
@@ -1475,7 +1498,7 @@ function flyTo(id){
     setTimeWarp(1);
   }
   renderPlanetList(); toggleMapIfOpen(); $('hud-target').textContent=`🎯 ${b.data.name}`;
-  toast(net?`🧭 Autopilot → ${b.data.name} (waktu mengikuti host). Gerakkan mouse/WASD untuk batal.`:`🧭 Autopilot → ${b.data.name} (warp waktu 1× otomatis). Gerakkan mouse/WASD untuk batal.`);
+  toast(net?`🧭 Autopilot → ${b.data.name} (waktu mengikuti ${net.isServer?'controller':'host'}). Gerakkan mouse/WASD untuk batal.`:`🧭 Autopilot → ${b.data.name} (warp waktu 1× otomatis). Gerakkan mouse/WASD untuk batal.`);
 }
 function toggleMapIfOpen(){ if(!$('map-panel').classList.contains('hidden'))$('map-panel').classList.add('hidden'); }
 
@@ -1758,12 +1781,16 @@ function fireLaser(){
   sfxLaser();
   if(!hit)return;
   addFlash(_shotEnd,'#ffd7a0',hit.kind==='asteroid'?0.9:Math.min(5,1.8+(hit.ent?hit.ent.hitRadius*0.05:0)),0.22);
-  if(net&&!isWorldHost()){
-    if(worldNet.hostId){
-      const payload=hit.kind==='asteroid'?{kind:'asteroid',i:hit.index}:{kind:'entity',id:hit.ent.data.id};
-      net.sendWorld({...payload,k:'hit'},worldNet.hostId);
+  if(net){
+    const payload=hit.kind==='asteroid'?{kind:'asteroid',i:hit.index}:{kind:'entity',id:hit.ent.data.id};
+    if(net.isServer){
+      net.sendWorld({...payload,k:'hit'});
+      return;
     }
-    return;
+    if(!isWorldHost()){
+      if(worldNet.hostId)net.sendWorld({...payload,k:'hit'},worldNet.hostId);
+      return;
+    }
   }
   if(hit.kind==='asteroid'){ applyWorldHit('asteroid',null,hit.index,_shotEnd); return; }
   applyWorldHit('entity',hit.ent.data.id,null,_shotEnd);
@@ -1791,7 +1818,7 @@ function updateEffects(dt){
     d.mesh.material.opacity=Math.max(0,d.life/d.max); d.mesh.scale.multiplyScalar(1-dt*0.16);
   }
   const now=performance.now();
-  if(isWorldHost()){
+  if(!net?.isServer&&isWorldHost()){
     for(const e of entities)if(e.destroyed&&now>=e.respawnAt){
       respawnEntity(e);
       broadcastWorldEvent({kind:'respawn',id:e.data.id});

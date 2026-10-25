@@ -1,0 +1,42 @@
+[Unit]
+Description=Nusantara Space Explorer multiplayer server
+Documentation=https://github.com/arminewbie114/jelajah-antariksa
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nse
+Group=nse
+WorkingDirectory=/opt/nse-backend
+EnvironmentFile=/etc/nse/nse.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/nse-backend/index.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+KillSignal=SIGTERM
+SyslogIdentifier=nse
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

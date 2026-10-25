@@ -1,22 +1,9 @@
+import { normalizeRoomCode } from './net-utils.js';
+
 const TRYSTERO_URL='https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
 const APP_ID='nusantara-space-explorer-v1';
 const PUBLIC_ROOM='nusantara-public-v1';
 const PRIVATE_ROOM_PREFIX='nusantara-room-v1-';
-
-export function sanitizePilotName(raw){
-  const text=String(raw??'').slice(0,64).normalize('NFKC')
-    .replace(/[^\p{L}\p{N} _.-]/gu,'')
-    .replace(/\s+/g,' ')
-    .trim();
-  return Array.from(text).slice(0,16).join('');
-}
-
-export function normalizeRoomCode(raw){
-  return String(raw??'').normalize('NFKC').toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/^-+|-+$/g,'')
-    .slice(0,24);
-}
 
 function sendSafe(action,data,options){
   try{

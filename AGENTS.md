@@ -16,15 +16,24 @@
 Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + importmap, tanpa build tool).
 - `index.html` — splash, HUD, panel info, peta, kontrol mobile.
 - `js/dataPlanets.js` — data NASA planet, eksoplanet, Bima Sakti (MILKYWAY), galaksi lain (GALAXIES), pesawat NSX.
-- `js/main.js` — scene, orbit deterministik, pesawat bersayap, kontrol FPS/touch, autopilot, minimap, audio, remote player, host dunia.
-- `js/multiplayer.js` — Trystero P2P, sanitasi nama/room, presence + kanal world.
+- `js/main.js` — scene, orbit deterministik, pesawat bersayap, kontrol FPS/touch, autopilot, minimap, audio, remote player, host/controller dunia.
+- `js/net.js` — deteksi `GET /api/config` dan pemilihan transport server/P2P.
+- `js/net-utils.js` — sumber tunggal `ASTEROID_COUNT=3000`, protocol version, sanitasi nama/room.
+- `js/multiplayer.js` — adapter Trystero P2P, presence + kanal world.
+- `js/multiplayer-server.js` — adapter WebSocket server.
+- `server/` — backend Node `ws` otoritatif, room/world, test.
+- `deploy/` — Caddyfile, systemd, env, installer native Ubuntu.
 - `css/style.css` — styling.
 
 ## Menjalankan & verifikasi
 - Serve via HTTP (jangan `file://`): `python3 -m http.server 8080 --bind 0.0.0.0`
 - Cek server: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/index.html`
 - Cek sintaks (Node Windows, dari folder repo):
-  `/mnt/c/nvm4w/nodejs/node.exe --check js/main.js && /mnt/c/nvm4w/nodejs/node.exe --check js/multiplayer.js`
+  `/mnt/c/nvm4w/nodejs/node.exe --check js/main.js && /mnt/c/nvm4w/nodejs/node.exe --check js/net.js && /mnt/c/nvm4w/nodejs/node.exe --check js/net-utils.js && /mnt/c/nvm4w/nodejs/node.exe --check js/multiplayer-server.js`
+- Test backend (Node/npm lewat Windows `cmd.exe`; WSL tidak punya `node`):
+  `cmd.exe /c "cd /d C:\Users\USER\Desktop\nusantara-space-explorer\server && npm test"`
+- Mode server lokal: `SERVE_STATIC=1 npm start` dari `server/`, buka `http://127.0.0.1:8787`.
+- Deteksi/health: `curl -fsS http://127.0.0.1:8787/api/config` dan `/health`.
 
 ## Batasan desain yang harus dijaga
 - Skala semi-realistis playable; pesawat `SHIP_SCALE=0.15` (lebih besar dari Bulan di game).
@@ -38,7 +47,19 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Objek Bima Sakti & galaksi: posisi statis (`fixed:true`), punya `nearRadius`, `hoverRadius`, `arriveRadius`, dan `info`; autopilot parkir di `hoverRadius`, batas dunia 2000 unit.
 - Daftar autopilot dikelompokkan: Tata Surya / Eksoplanet / Bima Sakti / Galaksi Lain.
 
-## Multiplayer P2P (Trystero)
+## Arsitektur multiplayer dua mode
+- Frontend memanggil `GET /api/config` lewat `js/net.js`. Respons `{mode:'server',protocol:1}` → WebSocket server; 404/gagal → P2P. Jangan memakai user-agent atau query string untuk memilih mode.
+- **Server mode**: VPS Ubuntu native, Node 20+/22, Caddy, systemd. Hanya TCP `80/443`; **jangan** tambahkan Docker, coturn, TURN, atau UDP di VPS. Caddy menyajikan `/opt/nse` dan mem-proxy `/api/*`, `/health`, `/ws` ke `127.0.0.1:8787`; backend berada di `/opt/nse-backend` (di luar web root).
+- Server otoritatif untuk room/presence, HP, destroy, respawn, asteroid bitset, jam dunia, dan controller warp. Posisi kapal dilaporkan client dan divalidasi batas; bukan anti-cheat fisika penuh.
+- Protokol client: `join`, `state`, `hit`, `warp`, `ping`; server: `welcome`, `world`, `peer`, `state`, `event`, `warp`, `pong`, `error`. Snapshot dunia 5 Hz; state pemain 10 Hz.
+- Pemain pertama menjadi controller. Jika controller keluar, server mempromosikan pemain berikutnya dan mengirim snapshot/warp baru. Di server mode jangan jalankan host election P2P, `hello`/`claim`, broadcast snapshot client, atau ping host.
+- `MAX_PLAYERS` default 16 (belum diuji lebih besar); `MAX_ROOMS`, `ROOM_IDLE_MS`, `PUBLIC_ORIGIN`/`ALLOWED_ORIGINS` diatur lewat `/etc/nse/nse.env`.
+- Origin WebSocket diverifikasi terhadap `PUBLIC_ORIGIN`/`ALLOWED_ORIGINS`. Jangan longgarkan tanpa alasan; jangan bind Node ke `0.0.0.0` di produksi.
+- Data dunia in-memory; restart server mereset room dan HP/asteroid. Belum ada akun, database, chat, atau PvP.
+- Deploy/update: `sudo ./deploy/install.sh <domain>`; script mengganti `/etc/caddy/Caddyfile` dan menyimpan backup. Panduan di `deploy/README.md`.
+- GitHub Pages dan VPS memakai **pool ruangan terpisah**. Jangan menyatukan room ID atau mengarahkan P2P ke server tanpa diminta.
+
+## Multiplayer P2P (Trystero, GitHub Pages)
 - Nama pilot **wajib** 2–16 karakter sebelum launch; kode ruangan opsional (minimal 3 karakter, huruf/angka/tanda hubung). Nama/room disimpan di `localStorage`.
 - Room publik `nusantara-public-v1`; room privat `nusantara-room-v1-${code}` + password `nse-room:${code}`; `appId` `nusantara-space-explorer-v1`.
 - CDN dipin: `https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm` (default Nostr). Import dilakukan dinamis agar launch tidak diblokir dan tetap bisa offline.
@@ -58,5 +79,7 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - TURN key Cloudflare **hanya** boleh disimpan sebagai secret Worker (`TURN_KEY_ID`, `TURN_KEY_API_TOKEN`) atau secret deploy; jangan pernah commit ke repo, frontend, atau log. Worker membatasi origin, memfilter URL port 53, dan meng-cache kredensial maksimal 5 menit.
 - `TURN_ENDPOINT` di `js/turn.js` harus diisi URL Worker + `/api/turn` setelah Worker dideploy. Tanpa endpoint/relay yang valid, game harus tetap fallback ke STUN/direct dan tidak crash.
 - NAT ketat/firewall yang memblokir WebRTC bisa tetap gagal walau TURN aktif. Jangan menambahkan input TURN manual tanpa diminta; perbaiki relay lewat Worker.
-- Keterbatasan yang sudah disepakati: tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
+- Keterbatasan P2P: tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky. Server VPS adalah mode terpisah dengan otoritas server.
+- Jangan mengaktifkan TURN/coturn di VPS server mode; TURN hanya untuk P2P GitHub Pages. Server mode tidak boleh memanggil `fetchTurnIceServers()`.
+- `ASTEROID_COUNT` hanya didefinisikan di `js/net-utils.js`; frontend dan server harus mengimpor nilai yang sama.
 - Jangan `await` koneksi Trystero sebelum splash ditutup/pointer lock agar gesture audio tetap valid; mulai koneksi async setelah launch.

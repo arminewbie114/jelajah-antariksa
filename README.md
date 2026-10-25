@@ -1,74 +1,150 @@
 # 🚀 Nusantara Space Explorer
 
-Web penjelajah antariksa 3D FPS berbahasa Indonesia. Terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora, Garuda A330) ke **8 planet + Bulan + Pluto + 3 eksoplanet nyata**, lalu jelajahi **Bima Sakti** (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan **5 galaksi lain** (Andromeda, Triangulum, LMC, Whirlpool, Sombrero). Bisa dimainkan bersama lewat **multiplayer P2P**: isi nama pilot, lalu gunakan ruang publik atau bagikan kode ruangan.
+Web penjelajah antariksa 3D FPS berbahasa Indonesia. Terbangkan pesawat futuristik (NSX Vanguard, Odyssey, Aurora, Garuda A330) ke **8 planet + Bulan + Pluto + 3 eksoplanet nyata**, lalu jelajahi **Bima Sakti** (Sgr A*, Nebula Orion, Pleiades, Sirius, Alpha Centauri, Betelgeuse) dan **5 galaksi lain** (Andromeda, Triangulum, LMC, Whirlpool, Sombrero).
+
+Multiplayer tersedia dalam dua mode terpisah:
+
+| Mode | Hosting | Otoritas dunia | Transport |
+|---|---|---|---|
+| **Server** | VPS Ubuntu + Caddy + Node | Server WebSocket | TCP 443, tanpa TURN |
+| **P2P** | GitHub Pages / hosting statis | Host P2P | Trystero WebRTC + Cloudflare TURN |
+
+Frontend mendeteksi mode lewat `GET /api/config`. Di VPS endpoint itu mengembalikan `mode: "server"`; di GitHub Pages 404 sehingga game otomatis memakai P2P. **Ruangan kedua mode tidak saling terhubung.**
 
 ## Cara menjalankan
 
-**Paling mudah (Windows):** buka folder ini lalu double-klik `index.html` — butuh internet untuk CDN Three.js.
+### Mode P2P statis
 
-**Via server lokal (disarankan):**
-```powershell
-cd "$env:USERPROFILE\Desktop\nusantara-space-explorer"
-python -m http.server 8080
+```bash
+python3 -m http.server 8080 --bind 0.0.0.0
 # buka http://localhost:8080
 ```
-Atau pakai ekstensi *Live Server* di VS Code.
 
-## Multiplayer P2P
-- **Nama pilot wajib** diisi sebelum meluncur (2–16 karakter). Nama terakhir disimpan di `localStorage`.
-- **Kode ruangan kosong** = ruang publik `nusantara-public-v1`. Isi kode yang sama di beberapa perangkat untuk membuat ruang privat, mis. `teman-kecil`.
-- Pemain lain tampil sebagai pesawat yang sama pilihannya + name tag. Jumlah pemain ada di HUD (`👥`).
-- **Dunia tersinkron:** satu pemain menjadi **host dunia** (ditandai 👑). Host mengirim snapshot posisi orbit, HP, status hancur, dan timer respawn semua planet/bulan/objek Bima Sakti/galaksi ±5×/detik. Asteroid tetap deterministik dan status hancurnya ikut disinkronkan.
-- **Warp global:** host mengatur waktu dunia `1× / 10× / 100×`; tombol warp pemain lain dinonaktifkan agar semua orbit tetap sama. Autopilot di multiplayer mengikuti warp host (offline tetap otomatis 1×).
-- **Host migration:** jika host keluar, pemain tersisa memilih host baru dan melanjutkan state dunia terakhir. Progres kunjungan `S.visited` tetap **personal** tiap pemain.
-- Kapal pemain lain tetap visual (belum ada PvP/chat). Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. State pesawat dikirim ±10×/detik.
-- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi memakai **STUN + relay TURN otomatis**: frontend mengambil kredensial TURN sementara dari Cloudflare Worker, jadi pemain tidak perlu mengisi URL/akun. Jika relay tidak tersedia, koneksi jatuh kembali ke STUN/direct.
-- Relay TURN memakai **Cloudflare Realtime TURN** dengan kuota gratis **1 TB egress/bulan**. Worker dan TURN key disiapkan sekali oleh pemilik proyek; kredensial rahasia tidak pernah masuk repo atau browser. Panduan ada di [`worker/README.md`](worker/README.md).
-- NAT ketat/simetris, jaringan seluler, atau firewall yang memblokir WebRTC tetap bisa gagal walaupun relay aktif. Jika status tidak bertambah menjadi 2 pemain, coba ulang atau gunakan jaringan lain.
-- Jika CDN/relay tidak tersedia, game tetap bisa dimainkan **offline** setelah nama diisi.
+Atau gunakan Live Server VS Code. Mode ini membutuhkan internet untuk CDN Three.js dan Trystero.
+
+### Mode server lokal
+
+```bash
+cd server
+npm install
+SERVE_STATIC=1 npm start
+# buka http://127.0.0.1:8787
+```
+
+Windows PowerShell:
+
+```powershell
+cd server
+npm install
+$env:SERVE_STATIC="1"; npm start
+```
+
+`SERVE_STATIC=1` hanya untuk pengembangan. Di produksi, Caddy yang menyajikan file statis dan mem-proxy `/api/*`, `/health`, serta `/ws` ke Node.
+
+### Deploy VPS
+
+Panduan lengkap: [`deploy/README.md`](deploy/README.md).
+
+```bash
+sudo ./deploy/install.sh nse.example.com
+```
+
+Target: Ubuntu 22.04/24.04, Node 20+, Caddy 2, systemd. Hanya port TCP `80/443` yang perlu dibuka; tidak ada Docker, coturn, TURN, atau UDP.
+
+## Multiplayer server
+
+- Nama pilot wajib 2–16 karakter. Kode ruangan opsional (minimal 3 karakter bila diisi); kode yang sama menempatkan pemain di ruangan yang sama.
+- Server memegang otoritas **ruangan, presence, HP, kehancuran, respawn, asteroid, jam dunia, dan controller warp**.
+- Posisi kapal dikirim client ±10×/detik dan divalidasi batasnya oleh server. Ini bukan anti-cheat fisika penuh.
+- Snapshot dunia dikirim server ±5×/detik. Pemain pertama menjadi **controller**; jika keluar, pemain berikutnya dipromosikan.
+- Controller mengatur warp global `1×/10×/100×`. Semua pemain menerima snapshot dan event yang sama.
+- Default 16 pemain per ruangan (`MAX_PLAYERS`), belum diuji untuk beban lebih besar.
+- Data dunia disimpan di memori; restart server mereset ruangan dan HP/asteroid.
+- Kapal pemain lain tetap visual. Belum ada PvP, chat, atau akun.
+
+## Multiplayer P2P (GitHub Pages)
+
+- Tetap memakai Trystero 0.26 (Nostr + WebRTC) dan Cloudflare TURN Worker yang sudah ada.
+- Nama pilot wajib; kode ruangan kosong memakai ruang publik `nusantara-public-v1`.
+- Host dunia mengirim snapshot, HP, kehancuran, respawn, asteroid, dan warp. Host migration berjalan bila host keluar.
+- `js/turn.js` masih berisi `TURN_ENDPOINT = ''`. Isi URL Worker + `/api/turn` setelah Worker dideploy; tanpa itu P2P memakai STUN/direct dan bisa gagal di NAT ketat.
+- Worker dan TURN key disiapkan sekali oleh pemilik proyek. Kredensial rahasia tidak boleh masuk repo atau browser.
+- P2P tetap bisa offline jika CDN/relay tidak tersedia.
 
 ## Kontrol
+
 - **Desktop:** WASD gerak, mouse lihat (klik canvas untuk kunci pointer), **F / klik kiri = laser**, Spasi/Ctrl naik-turun, Shift boost, J warp, E info (toggle), M peta + autopilot, R isi bensin, 1/2/3/4 ganti pesawat.
-- **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan (atas/bawah/kiri/kanan), tombol **⚡** = tembak laser (tahan untuk tembak otomatis).
-- **Autopilot:** pilih tujuan di peta (M). Kapal otomatis mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk membuka info; gerakkan mouse/WASD untuk batal.
+- **Mobile:** stik kiri = maju/mundur/strafe, stik kanan = arahkan, tombol **⚡** = tembak laser.
+- **Autopilot:** pilih tujuan di peta (M). Kapal mendekat, mencocokkan kecepatan, lalu parkir di sisi siang objek. Tekan E untuk info; gerakkan mouse/WASD untuk batal.
 
 ## Laser & penghancuran
-- Laser menembak lurus mengikuti crosshair, tanpa amunisi (cooldown ±0,17 dtk).
-- **Asteroid hancur dalam 1 tembakan** dan terurai menjadi pecahan.
-- **Planet/bulan** butuh beberapa tembakan; **objek raksasa** (Matahari, bintang, nebula, galaksi, lubang hitam) butuh puluhan–ratusan tembakan.
-- Setiap objek punya HP di `js/dataPlanets.js`; HP target tampil di bawah crosshair dan di panel info.
-- Semua objek yang hancur **kembali otomatis setelah 60 detik** (asteroid tidak respawn). Di multiplayer, HP, kehancuran, dan respawn disinkronkan oleh host; asteroid yang sudah hancur tetap hilang untuk semua pemain selama sesi. Autopilot otomatis batal bila target hancur.
+
+- Laser hitscan tanpa amunisi, cooldown ±0,17 detik.
+- Asteroid hancur dalam 1 tembakan; planet/bulan beberapa tembakan; objek raksasa puluhan–ratusan.
+- Semua objek yang hancur kembali otomatis setelah 60 detik, kecuali asteroid yang tetap hilang selama sesi.
+- Di server mode, hit dikirim ke server; server menghitung HP, destroy, respawn, dan asteroid. Di P2P, host yang menghitung.
 
 ## Yang bisa dijelajahi
+
 - Tata Surya: Merkurius–Neptunus, Pluto, Bulan, Matahari, Cygnus X-1.
 - Eksoplanet: Proxima Centauri b, TRAPPIST-1e, Kepler-452b.
 - Bima Sakti: bintang, gugus, nebula, dan lubang hitam supermasif Sgr A*.
 - Galaksi lain: Andromeda, Triangulum, Awan Magellan Besar, Whirlpool, Sombrero.
 
 ## Akurasi data
-Diameter, jarak AU, periode orbit, suhu, dan gravitasi planet mengacu NASA Planetary Fact Sheet. Data bintang/galaksi memakai jarak dan ukuran astronomis nyata (tahun cahaya). Skala render dikompresi agar playable: jarak tata surya 1:4000, diameter log, posisi galaksi didekatkan; nilai asli selalu tercantum di panel info.
+
+Diameter, jarak AU, periode orbit, suhu, dan gravitasi planet mengacu NASA Planetary Fact Sheet. Data bintang/galaksi memakai jarak dan ukuran astronomis nyata. Skala render dikompresi agar playable; nilai asli selalu tercantum di panel info.
 
 ## Teknologi
-- Three.js 0.160 via CDN + importmap, tanpa build tool — siap hosting statis (Vercel/Netlify/GitHub Pages).
-- Trystero 0.26 via CDN untuk presence multiplayer P2P (WebRTC, signaling Nostr).
-- Tekstur prosedural Canvas (planet, galaksi, nebula) tanpa aset unduhan besar.
-- Audio WebAudio, minimap 2D, kontrol sentuh dua stik.
+
+- Three.js 0.160 via CDN + importmap, tanpa build tool.
+- Node.js + `ws` untuk server WebSocket otoritatif.
+- Caddy untuk TLS otomatis, file statis, dan reverse proxy WebSocket.
+- Trystero 0.26 + Cloudflare TURN untuk mode P2P GitHub Pages.
+- Tekstur prosedural Canvas, WebAudio, minimap 2D, kontrol sentuh dua stik.
 
 ## Struktur
+
 ```
-index.html       — splash, HUD, panel info, peta, kontrol mobile
-css/style.css    — tema UI
-js/dataPlanets.js — data NASA + Bima Sakti + galaksi (sumber kebenaran)
-js/main.js       — scene, orbit deterministik, pesawat, FPS/touch, autopilot, minimap, audio, remote player, host dunia
-js/multiplayer.js — Trystero P2P, sanitasi nama/kode ruangan, presence + kanal world
-js/turn.js       — ambil kredensial relay TURN dari Worker, validasi, fallback STUN
-worker/          — Cloudflare Worker pembuat kredensial TURN sementara (secret tidak masuk repo)
+index.html          — splash, HUD, panel info, peta, kontrol mobile
+css/style.css       — tema UI
+js/dataPlanets.js   — data NASA + Bima Sakti + galaksi
+js/main.js          — scene, orbit, pesawat, FPS/touch, autopilot, minimap, audio, remote player
+js/net.js           — deteksi server vs P2P dan pemilihan transport
+js/net-utils.js     — ASTEROID_COUNT, protocol version, sanitasi nama/kode ruangan
+js/multiplayer.js   — adapter Trystero P2P
+js/multiplayer-server.js — adapter WebSocket server
+js/turn.js          — kredensial TURN Worker untuk P2P
+server/index.js     — HTTP API, /ws, static dev server
+server/room.js      — ruangan, presence, controller, snapshot, rate limit
+server/world.js     — HP, destroy, respawn, asteroid, validasi state
+server/test/        — unit test dan integration test WebSocket
+worker/             — Cloudflare Worker kredensial TURN (P2P)
+deploy/             — Caddyfile, systemd, env example, installer
 ```
 
-## Verifikasi cepat
+## Verifikasi
+
 ```bash
-python3 -m http.server 8080 --bind 0.0.0.0
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/index.html
+# Unit + integration test server
+cd server
+npm test
+
+# Sintaks frontend/backend
+node --check js/main.js
+node --check js/net.js
+node --check js/net-utils.js
+node --check js/multiplayer.js
+node --check js/multiplayer-server.js
+node --check server/index.js
+node --check server/room.js
+node --check server/world.js
+
+# Deteksi mode server
+curl -fsS http://127.0.0.1:8787/api/config
+curl -fsS http://127.0.0.1:8787/health
 ```
 
-Uji multiplayer cepat: buka dua tab, isi nama berbeda dan kode ruangan yang sama, lalu bandingkan HUD `👥 2`, posisi orbit, tombol warp hanya aktif di host, dan HP/asteroid yang hancur di satu tab ikut berubah di tab lain. Status `· relay` menunjukkan kredensial TURN berhasil dimuat. Untuk menguji fallback, blokir `cdn.jsdelivr.net` — splash tetap bisa diluncurkan dan status berubah menjadi offline.
+Uji browser mode server: buka dua tab, isi nama berbeda dan kode ruangan yang sama. HUD harus `👥 2`, status memuat `· server`, tab pertama `controller`, tab kedua `sinkron controller`. Tutup tab controller dan pastikan tab lain menjadi controller.
+
+Uji P2P: jalankan server statis tanpa `/api/config`, buka dua tab, lalu pastikan status memuat `host dunia` dan `sinkron host`.

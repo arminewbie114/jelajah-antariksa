@@ -1,0 +1,17 @@
+{
+  "name": "nse-multiplayer-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Server-authoritative multiplayer backend for Nusantara Space Explorer",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test test/world.test.js test/server.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

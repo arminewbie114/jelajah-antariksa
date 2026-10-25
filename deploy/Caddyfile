@@ -1,0 +1,22 @@
+nse.example.com {
+	encode zstd gzip
+
+	@nse_backend path /api/* /ws /health
+	handle @nse_backend {
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	handle {
+		root * /opt/nse
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
