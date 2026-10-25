@@ -54,6 +54,9 @@ Web 3D FPS penjelajah antariksa berbahasa Indonesia (Three.js 0.160 via CDN + im
 - Sanitasi semua input peer: nama, `rocketId` (harus ada di `builders`), posisi finite ±2600, pitch ±1.5; snapshot/ID/index divalidasi sebelum diterapkan.
 - Saat dispose remote ship jangan dispose texture builder yang di-cache (Garuda); cukup geometry/material dan texture name tag milik sprite remote.
 - `addRocketLights(target, withEngineLight)` harus tetap mendukung target model remote; nama grup `navLights`, `flame`, `engineHalo`, `strobe`, `engineLight` dipertahankan.
-- Koneksi memakai **STUN/direct otomatis** bawaan Trystero. Tidak ada UI, input, API key, atau kredensial TURN. NAT ketat/firewall yang memblokir WebRTC bisa membuat koneksi gagal; jangan menambahkan TURN manual tanpa diminta.
+- Koneksi memakai **STUN + TURN otomatis**: `js/turn.js` mengambil `iceServers` TURN sementara dari Cloudflare Worker (`worker/`), lalu diteruskan ke Trystero lewat `startMultiplayer({turnConfig})`; default STUN Trystero tetap dipakai. Tidak ada UI input TURN untuk pemain.
+- TURN key Cloudflare **hanya** boleh disimpan sebagai secret Worker (`TURN_KEY_ID`, `TURN_KEY_API_TOKEN`) atau secret deploy; jangan pernah commit ke repo, frontend, atau log. Worker membatasi origin, memfilter URL port 53, dan meng-cache kredensial maksimal 5 menit.
+- `TURN_ENDPOINT` di `js/turn.js` harus diisi URL Worker + `/api/turn` setelah Worker dideploy. Tanpa endpoint/relay yang valid, game harus tetap fallback ke STUN/direct dan tidak crash.
+- NAT ketat/firewall yang memblokir WebRTC bisa tetap gagal walau TURN aktif. Jangan menambahkan input TURN manual tanpa diminta; perbaiki relay lewat Worker.
 - Keterbatasan yang sudah disepakati: tanpa server anti-cheat, kode room bukan keamanan kuat, dan koneksi publik bisa flaky.
 - Jangan `await` koneksi Trystero sebelum splash ditutup/pointer lock agar gesture audio tetap valid; mulai koneksi async setelah launch.

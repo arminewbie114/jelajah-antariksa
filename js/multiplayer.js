@@ -37,8 +37,10 @@ export async function startMultiplayer(options={}){
   const {joinRoom,selfId}=trystero;
   const roomCode=normalizeRoomCode(options.roomCode);
   const roomId=roomCode?PRIVATE_ROOM_PREFIX+roomCode:PUBLIC_ROOM;
+  const turnConfig=Array.isArray(options.turnConfig)?options.turnConfig.filter(Boolean):[];
   const config={appId:APP_ID};
   if(roomCode)config.password='nse-room:'+roomCode;
+  if(turnConfig.length)config.turnConfig=turnConfig;
 
   try{
     const room=joinRoom(config,roomId,{
@@ -74,6 +76,7 @@ export async function startMultiplayer(options={}){
       roomId,
       roomCode,
       isPublic:!roomCode,
+      usingTurn:turnConfig.length>0,
       sendState(){
         const state=localState();
         if(state)sendSafe(shipAction,state);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PLANETS, BONUS, ROCKETS, SUN, EXOPLANETS, MILKYWAY, GALAXIES, BLACKHOLE } from './dataPlanets.js';
 import { startMultiplayer, sanitizePilotName, normalizeRoomCode } from './multiplayer.js';
+import { fetchTurnIceServers } from './turn.js';
 
 /* ============ SETUP ============ */
 const canvas = document.getElementById('scene');
@@ -1238,8 +1239,9 @@ function updateOnlineUI(){
   if(mpStatus==='online'&&net){
     const room=net.isPublic?'ruang publik':`ruang ${net.roomCode}`;
     const role=worldNet.selfHost?' · 👑 host dunia':(worldNet.hostId?' · sinkron host':' · mencari host');
+    const relay=net.usingTurn?' · relay':'';
     note.classList.add('online');
-    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}`;
+    note.textContent=`🌐 Online · ${room} · ${count} pemain${role}${relay}`;
   } else if(mpStatus==='connecting'){
     note.textContent='🌐 Menghubungkan ke ruang P2P...';
   } else if(mpStatus==='offline'){
@@ -1291,11 +1293,14 @@ function localNetState(){
   };
 }
 
-function beginMultiplayer(){
+async function beginMultiplayer(){
   mpStatus='connecting';
   updateOnlineUI();
+  const turn=await fetchTurnIceServers();
+  if(turn.source==='error')toast('⚠️ Relay TURN tidak tersedia — mencoba STUN/direct.',4500);
   startMultiplayer({
     roomCode:S.roomCode,
+    turnConfig:turn.iceServers,
     getLocalState:localNetState,
     onState:applyPeerState,
     onWorld:applyWorldMessage,
@@ -1323,7 +1328,8 @@ function beginMultiplayer(){
         toast('⚠️ Kode/password ruangan tidak cocok dengan pemain lain. Samakan kode ruangan.',6500);
         return;
       }
-      toast('⚠️ Koneksi P2P gagal — kemungkinan NAT ketat atau jaringan memblokir WebRTC. Coba jaringan lain.',6500);
+      const relayHint=turn.iceServers.length?'Relay TURN aktif — coba ulang.':'Relay TURN tidak aktif.';
+      toast(`⚠️ Koneksi P2P gagal. ${relayHint} Coba jaringan lain.`,6500);
     }
   }).then(mp=>{
     if(!mp){

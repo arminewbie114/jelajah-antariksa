@@ -22,8 +22,9 @@ Atau pakai ekstensi *Live Server* di VS Code.
 - **Warp global:** host mengatur waktu dunia `1× / 10× / 100×`; tombol warp pemain lain dinonaktifkan agar semua orbit tetap sama. Autopilot di multiplayer mengikuti warp host (offline tetap otomatis 1×).
 - **Host migration:** jika host keluar, pemain tersisa memilih host baru dan melanjutkan state dunia terakhir. Progres kunjungan `S.visited` tetap **personal** tiap pemain.
 - Kapal pemain lain tetap visual (belum ada PvP/chat). Koneksi memakai **Trystero 0.26 (Nostr + WebRTC)** dari CDN, tanpa akun, database, atau server game. State pesawat dikirim ±10×/detik.
-- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi memakai **STUN/direct otomatis** (tanpa input atau akun); NAT ketat/simetris, jaringan seluler, atau firewall yang memblokir WebRTC bisa membuat koneksi P2P gagal.
-- Tidak ada server TURN atau kredensial yang disimpan di aplikasi. Jika koneksi gagal, coba jaringan lain atau gunakan kode ruangan yang sama di jaringan yang lebih terbuka.
+- Otoritas dunia dipegang host P2P, bukan server anti-cheat. Koneksi memakai **STUN + relay TURN otomatis**: frontend mengambil kredensial TURN sementara dari Cloudflare Worker, jadi pemain tidak perlu mengisi URL/akun. Jika relay tidak tersedia, koneksi jatuh kembali ke STUN/direct.
+- Relay TURN memakai **Cloudflare Realtime TURN** dengan kuota gratis **1 TB egress/bulan**. Worker dan TURN key disiapkan sekali oleh pemilik proyek; kredensial rahasia tidak pernah masuk repo atau browser. Panduan ada di [`worker/README.md`](worker/README.md).
+- NAT ketat/simetris, jaringan seluler, atau firewall yang memblokir WebRTC tetap bisa gagal walaupun relay aktif. Jika status tidak bertambah menjadi 2 pemain, coba ulang atau gunakan jaringan lain.
 - Jika CDN/relay tidak tersedia, game tetap bisa dimainkan **offline** setelah nama diisi.
 
 ## Kontrol
@@ -60,6 +61,8 @@ css/style.css    — tema UI
 js/dataPlanets.js — data NASA + Bima Sakti + galaksi (sumber kebenaran)
 js/main.js       — scene, orbit deterministik, pesawat, FPS/touch, autopilot, minimap, audio, remote player, host dunia
 js/multiplayer.js — Trystero P2P, sanitasi nama/kode ruangan, presence + kanal world
+js/turn.js       — ambil kredensial relay TURN dari Worker, validasi, fallback STUN
+worker/          — Cloudflare Worker pembuat kredensial TURN sementara (secret tidak masuk repo)
 ```
 
 ## Verifikasi cepat
@@ -68,4 +71,4 @@ python3 -m http.server 8080 --bind 0.0.0.0
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/index.html
 ```
 
-Uji multiplayer cepat: buka dua tab, isi nama berbeda dan kode ruangan yang sama, lalu bandingkan HUD `👥 2`, posisi orbit, tombol warp hanya aktif di host, dan HP/asteroid yang hancur di satu tab ikut berubah di tab lain. Untuk menguji fallback, blokir `cdn.jsdelivr.net` — splash tetap bisa diluncurkan dan status berubah menjadi offline.
+Uji multiplayer cepat: buka dua tab, isi nama berbeda dan kode ruangan yang sama, lalu bandingkan HUD `👥 2`, posisi orbit, tombol warp hanya aktif di host, dan HP/asteroid yang hancur di satu tab ikut berubah di tab lain. Status `· relay` menunjukkan kredensial TURN berhasil dimuat. Untuk menguji fallback, blokir `cdn.jsdelivr.net` — splash tetap bisa diluncurkan dan status berubah menjadi offline.
